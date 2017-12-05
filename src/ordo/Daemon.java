@@ -16,7 +16,7 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
-	public static String rmiHost = "localhost"; // TODO
+	public static String rmiHost = "192.168.1.11"; // TODO
 	public static int rmiPort = 5000;
 	public static int hbPort = 5002;
 	
@@ -43,7 +43,7 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 	public static void main(String args[]) {
 		try {
 			int localPort = Integer.parseInt(args[0]);
-			String hostname = InetAddress.getLocalHost().getHostName();
+			String hostname = InetAddress.getLocalHost().getHostAddress();
 			ILauncher l = (ILauncher) Naming.lookup("//"+Daemon.rmiHost+":"+Daemon.rmiPort+"/Launcher");
 			l.addDaemon(new  Daemon(hostname, localPort));
 		} catch (Exception e) {

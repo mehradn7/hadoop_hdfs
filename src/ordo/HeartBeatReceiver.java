@@ -12,7 +12,6 @@ public class HeartBeatReceiver extends Thread implements IHeartBeatReceiver {
 	private ServerSocket ss;
 	private HashMap<String, IDaemon> daemons;
 	private HashMap<String, Socket> sockets;
-	private Object lock = new Object();
 	
 	public HeartBeatReceiver(HashMap<String, IDaemon> daemons) throws IOException {
 		super();
@@ -36,11 +35,9 @@ public class HeartBeatReceiver extends Thread implements IHeartBeatReceiver {
 				try {
 					if (s.getInputStream().read() != 1) {
 						this.removeEmitter(s);
-						System.out.println("Remove 1");
 					}
 				} catch (IOException e) {
 					this.removeEmitter(s);
-					System.out.println("Remove 2");
 				}
 			}
 		}
@@ -49,14 +46,11 @@ public class HeartBeatReceiver extends Thread implements IHeartBeatReceiver {
 	@Override
 	synchronized public void addEmitter(Socket socket) {
 		this.sockets.put(socket.getInetAddress().getHostName(), socket);
-		System.out.println("ADD : "+socket.getLocalAddress());
 	}
 
 	@Override
 	synchronized public void removeEmitter(Socket s) {
 		this.daemons.remove(s.getInetAddress().getHostName());
-		System.out.println("-> "+s.getInetAddress().getHostName());
-		System.out.println("-> "+this.daemons.keySet());
 		this.sockets.remove(s.getInetAddress().getHostName());
 		try {
 			s.close();
