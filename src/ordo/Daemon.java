@@ -12,9 +12,13 @@ import formats.Format;
 
 public class Daemon extends UnicastRemoteObject implements IDaemon {
 
-	public static String rmHost = "localhost"; // TODO
-	public static int rmPortRMI = 5000;
-	public static int rmPortHB = 5001;
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+	public static String rmiHost = "localhost"; // TODO
+	public static int rmiPort = 5000;
+	public static int hbPort = 5002;
 	
 	public String localHost = null;
 	public int localPort = 0;
@@ -22,7 +26,9 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 	
 	public Daemon(String localHost, int port) throws UnknownHostException, IOException {
 		super();
-		this.hb = new HeartBeatEmitter(Daemon.rmHost, Daemon.rmPortHB);
+		this.localHost = localHost;
+		this.localPort = port;
+		this.hb = new HeartBeatEmitter(Daemon.rmiHost, Daemon.hbPort);
 		this.hb.start();
 		
 	}
@@ -30,16 +36,16 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 	public void runMap (Mapper m, Format reader, Format writer, CallBack cb) throws RemoteException {
 	}
 	
-	@Override
-	public String getHostname() {
+	public String getHostname() throws RemoteException {
 		return this.localHost;
 	}
 	
 	public static void main(String args[]) {
 		try {
 			int localPort = Integer.parseInt(args[0]);
-			ILauncher l = (ILauncher) Naming.lookup("//"+Daemon.rmHost+":"+Daemon.rmPortRMI+"Launcher");
-			l.addDaemon(new  Daemon(InetAddress.getLocalHost().getHostName(), localPort));
+			String hostname = InetAddress.getLocalHost().getHostName();
+			ILauncher l = (ILauncher) Naming.lookup("//"+Daemon.rmiHost+":"+Daemon.rmiPort+"/Launcher");
+			l.addDaemon(new  Daemon(hostname, localPort));
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
