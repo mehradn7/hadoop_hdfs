@@ -11,7 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collection;
 
-public class SocketFormat implements Format {
+public class RLineWSocketFormat implements Format {
 	
 	/**
 	 * 
@@ -25,7 +25,7 @@ public class SocketFormat implements Format {
 	private ObjectInputStream ois;
 	private Collection<KV> kvs;
 	
-	public SocketFormat(String host, int port, Collection<KV> kvs){
+	public RLineWSocketFormat(String host, int port, Collection<KV> kvs){
 		this.index = 1L;
 		this.host = host;
 		this.port = port;
@@ -48,7 +48,8 @@ public class SocketFormat implements Format {
 	@Override
 	public void write(KV record) {
 		try{
-			this.oos.writeObject(record);
+			this.oos.writeObject(record.k);
+			this.kvs.add(record);
 		}catch(IOException e){
 			e.printStackTrace();
 		}
@@ -95,5 +96,57 @@ public class SocketFormat implements Format {
 	@Override
 	public void setFname(String host) {
 		this.host = host;
+	}
+
+	public Socket getS() {
+		return s;
+	}
+
+	public void setS(Socket s) {
+		this.s = s;
+	}
+
+	public int getPort() {
+		return port;
+	}
+
+	public void setPort(int port) {
+		this.port = port;
+	}
+
+	public String getHost() {
+		return host;
+	}
+
+	public void setHost(String host) {
+		this.host = host;
+	}
+
+	public ObjectOutputStream getOos() {
+		return oos;
+	}
+
+	public void setOos(ObjectOutputStream oos) {
+		this.oos = oos;
+	}
+
+	public ObjectInputStream getOis() {
+		return ois;
+	}
+
+	public void setOis(ObjectInputStream ois) {
+		this.ois = ois;
+	}
+
+	public Collection<KV> getKvs() {
+		return kvs;
+	}
+
+	public void setKvs(Collection<KV> kvs) {
+		this.kvs = kvs;
+	}
+
+	public void setIndex(long index) {
+		this.index = index;
 	}
 }
