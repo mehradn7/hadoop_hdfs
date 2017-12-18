@@ -10,6 +10,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collection;
+import java.util.HashMap;
 
 public class RLineWSocketFormat implements Format {
 	
@@ -23,9 +24,9 @@ public class RLineWSocketFormat implements Format {
 	private String host;
 	private ObjectOutputStream oos;
 	private ObjectInputStream ois;
-	private Collection<KV> kvs;
+	private HashMap<String, Integer> kvs;
 	
-	public RLineWSocketFormat(String host, int port, Collection<KV> kvs){
+	public RLineWSocketFormat(String host, int port, HashMap<String, Integer> kvs){
 		this.index = 1L;
 		this.host = host;
 		this.port = port;
@@ -49,7 +50,7 @@ public class RLineWSocketFormat implements Format {
 	public void write(KV record) {
 		try{
 			this.oos.writeObject(record.k);
-			this.kvs.add(record);
+			this.kvs.put(record.k, Integer.valueOf(record.v)+this.kvs.get(record.k));
 		}catch(IOException e){
 			e.printStackTrace();
 		}
@@ -62,12 +63,14 @@ public class RLineWSocketFormat implements Format {
 		if (mode == OpenMode.R){
 			try {
 				this.s = new Socket(this.host, this.port);
+				this.oos = new ObjectOutputStream(this.s.getOutputStream());
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}else{
 			try {
 				this.s = new Socket(this.host, this.port);
+				this.ois = new ObjectInputStream(this.s.getInputStream());
 			} catch (IOException e) {
 				e.printStackTrace();
 			}	
@@ -138,11 +141,11 @@ public class RLineWSocketFormat implements Format {
 		this.ois = ois;
 	}
 
-	public Collection<KV> getKvs() {
+	public HashMap<String, Integer> getKvs() {
 		return kvs;
 	}
 
-	public void setKvs(Collection<KV> kvs) {
+	public void setKvs(HashMap<String, Integer> kvs) {
 		this.kvs = kvs;
 	}
 

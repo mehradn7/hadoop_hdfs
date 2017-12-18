@@ -16,6 +16,8 @@ import map.Mapper;
 import map.Reducer;
 import formats.Format;
 import formats.Format.OpenMode;
+import formats.FormatWriter;
+import formats.RLineWSocketFormat;
 import formats.KV;
 
 public class Daemon extends UnicastRemoteObject implements IDaemon {
@@ -77,10 +79,8 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 
 class MapSlave extends Thread {
 
-	private ServerSocket ss;
-	private Socket s;
 	private Format reader;
-	private Format writer;
+	private RLineWSocketFormat writer;
 	private HashMap<String, Integer> results;
 	private CallBack cb;
 	private Mapper m;
@@ -93,9 +93,10 @@ class MapSlave extends Thread {
 		this.reader = reader;
 		/* On ouvre les fichiers utiles au map */
 		this.reader= reader;
-		this.writer=writer;
+		this.writer=(RLineWSocketFormat)writer;
 		this.cb = cb;
 		this.results = results;
+		this.writer.setKvs(this.results);
 		this.m = m;
 	}
 
@@ -103,7 +104,7 @@ class MapSlave extends Thread {
 
 		this.reader.open(OpenMode.R);
 		this.writer.open(OpenMode.W);
-		this.m.map(reader, writer);
+		this.m.map(reader, (FormatWriter) writer);
 
 		this.cb.isTerminated(this.localHost, this.localPort);
 	}
