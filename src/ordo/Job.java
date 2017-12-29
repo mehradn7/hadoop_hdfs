@@ -86,9 +86,6 @@ public class Job extends UnicastRemoteObject implements ILauncher, IJob {
 		System.out.println("NOUVEAU Daemon : "+d.getHostname());
 		this.daemons.put(d.getHostname(), d);
 	}
-	
-	public void startJob(MapReduce mr) {
-	}
 
 	@Override
 	public void setNumberOfReduces(int tasks) {
@@ -184,6 +181,47 @@ public class Job extends UnicastRemoteObject implements ILauncher, IJob {
 	 */
 	public void startHeartBeat() {
 		this.hb.start();
+	}
+	
+	/* 
+	 * Lance le job.
+	 */
+	public void startJob(MapReduce mr) {
+		this.setMapReduce(mr);
+		
+		/*
+		 * Lancement des tâches Map.
+		 */
+		
+		// TODO : vérification du nombre de daemons disponibles
+		
+		// TODO : lancement des tâches map en quantité this.numberOfMaps, en parrallèle
+		
+		/*
+		 * Récupération des clefs envoyées par les daemons (tâches Maps).
+		 */
+		
+		/*
+		 * Lancement des tâches Reduces.
+		 */
+		
+		// TODO : vérification du nombre de daemons disponibles
+		
+		// TODO : lancement des tâches reduce en quantité this.numberOfReduces, en parrallèle
+		
+		/*
+		 * Attribution des clefs à chaque serveur et envoie d'une HashMap à chaque daemon qui indique à quel 
+		 * daemon envoyer chaque clef.
+		 */
+		
+		// TODO : envoie des hashmaps<Key, Daemons> aux daemons
+		
+		// TODO : les daemons effectuent le reduce
+		
+		/*
+		 * Récupération des réduces pour concaténation et écriture du résultat final.
+		 */
+		
 	}
 	
 	public static void main(String args[]) {
