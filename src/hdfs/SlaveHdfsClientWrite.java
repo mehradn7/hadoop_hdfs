@@ -22,9 +22,10 @@ public class SlaveHdfsClientWrite extends Thread {
 	private String host;
 	private int port;
 	private String fname;
+	private int idBloc;
 	
 	public SlaveHdfsClientWrite(String host, int port, int startLine, int chunkSize,
-			String localFSSourceFname, Format.Type fmt) throws UnknownHostException, IOException {
+			String localFSSourceFname, Format.Type fmt, int idBloc) throws UnknownHostException, IOException {
 		this.host = host;
 		this.port = port;
 		this.s = new Socket(host, port);
@@ -32,6 +33,7 @@ public class SlaveHdfsClientWrite extends Thread {
 		this.chunkSize = chunkSize;
 		this.fileType = fmt;
 		this.fname = localFSSourceFname;
+		this.idBloc = idBloc;
 		String pathString = "../data/"+localFSSourceFname;
 		switch(fmt) {
 		case LINE:
@@ -54,7 +56,7 @@ public class SlaveHdfsClientWrite extends Thread {
 			ObjectOutputStream oos = new ObjectOutputStream(s.getOutputStream());
 			oos.writeObject("write");
 			oos.writeObject(fileType.toString());
-			oos.writeObject(this.fname);
+			oos.writeObject(this.fname + this.idBloc);
 			KV kv;
 			for (i = 1; ((kv = file.read()) != null) && (i <= this.chunkSize); i++ ) {
 				oos.writeObject(kv);

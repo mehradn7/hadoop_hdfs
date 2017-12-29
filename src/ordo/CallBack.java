@@ -1,5 +1,9 @@
 package ordo;
 
-public interface CallBack {
+import java.rmi.Remote;
 
+public interface CallBack extends Remote {
+	
+	public void wakeUp();
+	
 }

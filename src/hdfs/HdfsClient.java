@@ -10,117 +10,177 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import formats.Format;
 import formats.KV;
 import formats.LineFormat;
 
 public class HdfsClient {
-	
-	private static Path configFile = Paths.get("../src/config/config-serveurs.txt"); /* EN RELATIF PAR RAPPORT A BIN*/
-	private static ArrayList<String> hl = new ArrayList<String>(); // Adresses des serveurs
-	private static ArrayList<Integer> pl = new ArrayList<Integer>(); // Ports des serveurs
-	public static enum Commande {CMD_READ, CMD_WRITE, CMD_DELETE};
 
-    private static void usage() {
-        System.out.println("Usage: java HdfsClient read <file>");
-        System.out.println("Usage: java HdfsClient write <line|kv> <file>");
-        System.out.println("Usage: java HdfsClient delete <file>");
-    }
-	
-    public static void HdfsDelete(String hdfsFname) throws UnknownHostException, IOException {
-    	SlaveHdfsClientDelete sl;
-    	for (int i = 0; i < hl.size(); i++) {
-    		sl = new SlaveHdfsClientDelete(hl.get(i), pl.get(i), hdfsFname);
-    		sl.start();
-    	}
-    	System.out.println("Fichier effacé du service Hdfs.");
-    }
-	
-    public static void HdfsWrite(Format.Type fmt, String localFSSourceFname, 
-     int repFactor) throws UnknownHostException, IOException, InterruptedException {
-    	Path p = Paths.get("../data/"+localFSSourceFname);
+	private static Path configFile = Paths
+			.get("../src/config/config-serveurs.txt"); /*
+														 * EN RELATIF PAR
+														 * RAPPORT A BIN
+														 */
+	private static ArrayList<String> hl = new ArrayList<String>(); // Adresses
+																	// des
+																	// serveurs
+	private static ArrayList<Integer> pl = new ArrayList<Integer>(); // Ports
+																		// des
+																		// serveurs
+
+	public static enum Commande {
+		CMD_READ, CMD_WRITE, CMD_DELETE
+	};
+
+	private static void usage() {
+		System.out.println("Usage: java HdfsClient read <file>");
+		System.out.println("Usage: java HdfsClient write <line|kv> <file>");
+		System.out.println("Usage: java HdfsClient delete <file>");
+	}
+
+	public static void HdfsDelete(String hdfsFname) throws UnknownHostException, IOException, ClassNotFoundException {
+		INode fileNode = new INode(hdfsFname);
+
+		HashMap<Integer, ArrayList<String>> repBlocs = HdfsUtil.getStrategieRepartition(fileNode, Commande.CMD_DELETE);
+
+		for (Integer i : repBlocs.keySet()) {
+			for (String server : repBlocs.get(i)) {
+				System.out.println(i + "->" + server);
+
+			}
+		}
+
+		SlaveHdfsClientDelete sl;
+		for (Integer i : repBlocs.keySet()) {
+			for (String serveur : repBlocs.get(i)) {
+				sl = new SlaveHdfsClientDelete(serveur, 8090, hdfsFname + i);
+				sl.start();
+			}
+		}
+		System.out.println("Fichier effacé du service Hdfs.");
+	}
+
+	public static void HdfsWrite(Format.Type fmt, String localFSSourceFname, int repFactor)
+			throws UnknownHostException, IOException, InterruptedException, ClassNotFoundException {
+		Path p = Paths.get("../data/" + localFSSourceFname);
 		long nbOfLines = Files.lines(p).count();
-    	int chunkSize = (int) nbOfLines / hl.size() + 1;
-    	SlaveHdfsClientWrite sl;
-    	for (int i = 0; i < hl.size(); i++) {
-    		sl = new SlaveHdfsClientWrite(hl.get(i), pl.get(i), (i*chunkSize)+1, chunkSize,
-    				localFSSourceFname, fmt);
-    		sl.start();
-    	}
-    }
+		int chunkSize = (int) nbOfLines / hl.size() + 1;
 
-    public static void HdfsRead(String hdfsFname, String localFSDestFname) throws UnknownHostException,
-    	IOException, ClassNotFoundException, InterruptedException {
-    	System.out.println("Lecture en cours ...");
-    	ArrayList<SlaveHdfsClientRead> sl = new ArrayList<SlaveHdfsClientRead>();
-    	SlaveHdfsClientRead currentSlave;
-    	for (int i = 0; i < hl.size(); i++) {
-    		currentSlave  = new SlaveHdfsClientRead(hl.get(i), pl.get(i), hdfsFname);
-    		sl.add(currentSlave);
-    		currentSlave.start();
-    	}
-    	Format file = (Format) new LineFormat("../data/"+localFSDestFname);
-    	file.open(Format.OpenMode.W);
-    	ObjectInputStream ois;
-    	KV res;
-    	for (int i = 0; i < hl.size(); i++) {
-    		sl.get(i).join();
-        	ois = sl.get(i).getObjectInputStream();
-        	while ((res = (KV) ois.readObject()) != null) {
-        		file.write(res);
-    		}
-    		ois.close();
-    	}
-    	//System.out.println("Lecture terminée ! ");
-    }
-    
-    public static void setHdfsConfig() {
-    	try (BufferedReader reader = Files.newBufferedReader(configFile)) {
-    	    String line;
-    	    while ((line = reader.readLine()) != null) {
-    	    	String mots[] = line.split("[ ]+");
-    	    	hl.add(mots[0]);
-    	    	pl.add(Integer.parseInt(mots[1]));
-    	    }
-    	} catch (IOException x) {
-    	    System.err.format("IOException: %s%n", x);
-    	}
-    }
+		INode fileNode = new INode(localFSSourceFname, repFactor);
 
-	
-    public static void main(String[] args) {
-        // java HdfsClient <read|write> <line|kv> <file>
-    	
-    	HdfsClient.setHdfsConfig();
+		HashMap<Integer, ArrayList<String>> repBlocs = HdfsUtil.getStrategieRepartition(fileNode, Commande.CMD_WRITE);
 
-        try {
-            if (args.length<2) {usage(); return;}
+		for (Integer i : repBlocs.keySet()) {
+			for (String server : repBlocs.get(i)) {
+				System.out.println(i + "->" + server);
 
-            switch (args[0]) {
-              case "read": 
-            	  HdfsRead(args[1],args[1]);
-            	  break;
-              case "delete": 
-            	  HdfsDelete(args[1]); 
-            	  break;
-              case "write": 
-                Format.Type fmt;
-                if (args.length < 3) {
-                	usage(); 
-                	return;
-                }
-                if (args[1].equals("line")) fmt = Format.Type.LINE;
-                else if(args[1].equals("kv")) fmt = Format.Type.KV;
-                else {
-                	usage(); 
-                	return;
-                	}
-                HdfsWrite(fmt,args[2],1);
-            }	
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-    }
+			}
+		}
+
+		SlaveHdfsClientWrite sl;
+		for (Integer i : repBlocs.keySet()) {
+			System.out.println("écriture du bloc numéro " + i);
+			for (String serveur : repBlocs.get(i)) {
+				sl = new SlaveHdfsClientWrite(serveur, 8090, (i * chunkSize) + 1, chunkSize, localFSSourceFname, fmt,
+						i);
+				sl.start();
+			}
+		}
+	}
+
+	public static void HdfsRead(String hdfsFname, String localFSDestFname)
+			throws UnknownHostException, IOException, ClassNotFoundException, InterruptedException {
+		System.out.println("Lecture en cours ...");
+		ArrayList<SlaveHdfsClientRead> sl = new ArrayList<SlaveHdfsClientRead>();
+
+		INode fileNode = new INode(hdfsFname);
+
+		HashMap<Integer, ArrayList<String>> repBlocs = HdfsUtil.getStrategieRepartition(fileNode, Commande.CMD_READ);
+
+		for (Integer i : repBlocs.keySet()) {
+			for (String server : repBlocs.get(i)) {
+				System.out.println(i + "->" + server);
+
+			}
+		}
+		SlaveHdfsClientRead currentSlave;
+		for (Integer i : repBlocs.keySet()) {
+			currentSlave = new SlaveHdfsClientRead(repBlocs.get(i).get(0), 8090, hdfsFname + i);
+			sl.add(currentSlave);
+			currentSlave.start();
+		}
+		Format file = (Format) new LineFormat("../data/" + localFSDestFname);
+		file.open(Format.OpenMode.W);
+		ObjectInputStream ois;
+		KV res;
+		for (Integer i : repBlocs.keySet()) {
+			sl.get(i).join();
+			ois = sl.get(i).getObjectInputStream();
+			while ((res = (KV) ois.readObject()) != null) {
+				file.write(res);
+			}
+			ois.close();
+		}
+	}
+
+	public static void setHdfsConfig() {
+		try (BufferedReader reader = Files.newBufferedReader(configFile)) {
+			String line;
+			while ((line = reader.readLine()) != null) {
+				String mots[] = line.split("[ ]+");
+				hl.add(mots[0]);
+				pl.add(Integer.parseInt(mots[1]));
+			}
+		} catch (IOException x) {
+			System.err.format("IOException: %s%n", x);
+		}
+	}
+
+	public static void main(String[] args) {
+		// java HdfsClient <read|write> <line|kv> <file>
+
+		HdfsClient.setHdfsConfig();
+
+		try {
+			if (args.length < 2) {
+				usage();
+				return;
+			}
+
+			switch (args[0]) {
+			case "read":
+				HdfsRead(args[1], args[1] + "READ");
+				break;
+			case "delete":
+				HdfsDelete(args[1]);
+				break;
+			case "write":
+				Format.Type fmt;
+				if (args.length < 3) {
+					usage();
+					return;
+				}
+				if (args[1].equals("line"))
+					fmt = Format.Type.LINE;
+				else if (args[1].equals("kv"))
+					fmt = Format.Type.KV;
+				else {
+					usage();
+					return;
+				}
+				/*
+				 * Contacter le NameNode et récupérer la liste des serveurs
+				 * disponibles
+				 */
+
+				/* Ecrire le fichier sur hdfs */
+				HdfsWrite(fmt, args[2], 2);
+			}
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+	}
 
 }

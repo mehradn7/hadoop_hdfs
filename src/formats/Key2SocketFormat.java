@@ -11,7 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collection;
 
-public class RLineWSocketFormat implements Format {
+public class Key2SocketFormat implements Format {
 	
 	/**
 	 * 
@@ -25,7 +25,7 @@ public class RLineWSocketFormat implements Format {
 	private ObjectInputStream ois;
 	private Collection<KV> kvs;
 	
-	public RLineWSocketFormat(String host, int port, Collection<KV> kvs){
+	public Key2SocketFormat(String host, int port, Collection<KV> kvs){
 		this.index = 1L;
 		this.host = host;
 		this.port = port;

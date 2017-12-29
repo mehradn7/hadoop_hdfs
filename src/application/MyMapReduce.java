@@ -1,5 +1,6 @@
 package application;
 
+import java.rmi.RemoteException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
@@ -41,7 +42,13 @@ public class MyMapReduce implements MapReduce {
 	}
 	
 	public static void main(String args[]) {
-		Job j = new Job(MyMapReduce.class);
+		Job j = null;
+		try {
+			j = new Job(new MyMapReduce());
+		} catch (RemoteException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
 		System.out.println("[] Job initialisé !");
         j.setInputFormat(Format.Type.LINE);
         j.setInputFname(args[0]);

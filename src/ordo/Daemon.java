@@ -10,6 +10,7 @@ import java.net.UnknownHostException;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.Collection;
 import java.util.HashMap;
 
 import map.Mapper;
@@ -31,7 +32,7 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 	private String localHost = null;
 	private int localPort = 0;
 	private HeartBeatEmitter hb;
-	private HashMap<String, Integer> results;
+	private Collection<KV> results;
 	
 	
 	public Daemon(String localHost, int port) throws UnknownHostException, IOException {
@@ -47,7 +48,7 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 		/*
 		 * On crée un thread esclave qui va exécuter le map
 		 */
-		MapSlave s = new MapSlave(reader, writer, m, results, cb, this.localHost, this.localPort);
+		MapSlave s = new MapSlave(reader, writer, m, this.results, cb, this.localHost, this.localPort);
 		s.start();
 	}
 	
@@ -81,7 +82,7 @@ class MapSlave extends Thread {
 	private Socket s;
 	private Format reader;
 	private Format writer;
-	private HashMap<String, Integer> results;
+	private Collection<KV> results;
 	private CallBack cb;
 	private Mapper m;
 	private String localHost;
@@ -89,7 +90,7 @@ class MapSlave extends Thread {
 
 
 	public MapSlave(Format reader, Format writer, Mapper m, 
-			HashMap<String, Integer> results, CallBack cb, String localHost, int localPort) {
+			Collection<KV> results, CallBack cb, String localHost, int localPort) {
 		this.reader = reader;
 		/* On ouvre les fichiers utiles au map */
 		this.reader= reader;
@@ -115,7 +116,7 @@ class ReduceSlave extends Thread {
 	private Socket s;
 	private Format reader;
 	private Format writer;
-	private HashMap<String, Integer> results;
+	private Collection<KV> results;
 	private CallBack cb;
 	private Reducer r;
 	private String localHost;
@@ -123,7 +124,7 @@ class ReduceSlave extends Thread {
 
 
 	public ReduceSlave(Format reader, Format writer, Reducer r, 
-			HashMap<String, Integer> results, CallBack cb, String localHost, int localPort) {
+			Collection<KV> results, CallBack cb, String localHost, int localPort) {
 		this.reader = reader;
 		/* On ouvre les fichiers utiles au map */
 		this.reader= reader;
