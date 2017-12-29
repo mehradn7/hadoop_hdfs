@@ -4,7 +4,7 @@ import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.concurrent.CountDownLatch;
 
-public class CallBackMap extends UnicastRemoteObject implements CallBack {
+public class CallBackMap extends UnicastRemoteObject implements ICallBack {
 
 	/**
 	 * 
@@ -18,7 +18,7 @@ public class CallBackMap extends UnicastRemoteObject implements CallBack {
 	}
 
 	@Override
-	public void wakeUp() {
+	public void isTerminated() {
 		this.barrier.countDown();
 	}
 

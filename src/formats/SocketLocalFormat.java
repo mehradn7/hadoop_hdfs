@@ -12,7 +12,7 @@ import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.HashMap;
 
-public class Key2SocketFormat implements Format {
+public class SocketLocalFormat implements Format {
 	
 	/**
 	 * 
@@ -24,13 +24,9 @@ public class Key2SocketFormat implements Format {
 	private String host;
 	private ObjectOutputStream oos;
 	private ObjectInputStream ois;
-	private HashMap<String, Integer> kvs;
+	private Collection<KV> kvs;
 	
-<<<<<<< HEAD:src/formats/Key2SocketFormat.java
-	public Key2SocketFormat(String host, int port, Collection<KV> kvs){
-=======
-	public RLineWSocketFormat(String host, int port, HashMap<String, Integer> kvs){
->>>>>>> 4dad24d9aee74cac126c67ee1180b5ece363a782:src/formats/RLineWSocketFormat.java
+	public SocketLocalFormat(String hostname, int port) {
 		this.index = 1L;
 		this.host = host;
 		this.port = port;

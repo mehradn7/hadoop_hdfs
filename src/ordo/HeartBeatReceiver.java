@@ -8,16 +8,19 @@ import java.util.HashMap;
 import java.util.Iterator;
 
 public class HeartBeatReceiver extends Thread implements IHeartBeatReceiver {
-
-	private int localPort;
+	
+	/*
+	 * Port d'écoute du HeartBeatReceiver.
+	 */
+	public static int port = 5002;
+	
 	private ServerSocket ss;
 	private HashMap<String, IDaemon> daemons;
 	private HashMap<String, Socket> sockets;
 	
 	public HeartBeatReceiver(HashMap<String, IDaemon> daemons) throws IOException {
 		super();
-		this.localPort = 5002;
-		this.ss = new ServerSocket(this.localPort);
+		this.ss = new ServerSocket(HeartBeatReceiver.port);
 		this.ss.setSoTimeout(300);
 		this.sockets = new HashMap<String, Socket>();
 		this.daemons = daemons;

@@ -1,14 +1,20 @@
 package ordo;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import formats.Format;
 import formats.Format.Type;
+import formats.LineFormat;
+import formats.SocketLocalFormat;
 import map.MapReduce;
 
 public class Job extends UnicastRemoteObject implements ILauncher, IJob {
@@ -19,9 +25,19 @@ public class Job extends UnicastRemoteObject implements ILauncher, IJob {
 	private static final long serialVersionUID = 1L;
 	
 	/*
+	 * Nom de l'hôte du job.
+	 */
+	public String hostname;
+	
+	/*
 	 * Port du registry RMI.
 	 */
-	private static int portRMI = 5000; // TODO
+	public static final int portRegistryRMI = 5000; // TODO
+	
+	/*
+	 * Port de reception des clefs connues par les tâches Maps. 
+	 */
+	public static final int portMapperKeys = 5001;
 	
 	/*
 	 * HashMap qui lie l'adresse d'un daemon avec la poignée du stub (RMI) de ce daemon, accès
@@ -71,10 +87,20 @@ public class Job extends UnicastRemoteObject implements ILauncher, IJob {
 	private MapReduce mapReduce;
 	
 	/*
+	 * Barrière des Mappers
+	 */
+	private CountDownLatch stopMappers;
+	
+	/*
 	 * Constructeur par défaut du Job.
 	 */
 	public Job() throws RemoteException {
 		super();
+		try {
+			this.hostname = InetAddress.getLocalHost().getHostAddress();
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public Job(MapReduce mapReduce) throws RemoteException {
@@ -83,8 +109,16 @@ public class Job extends UnicastRemoteObject implements ILauncher, IJob {
 	}
 
 	synchronized public void addDaemon(IDaemon d) throws RemoteException {
-		System.out.println("NOUVEAU Daemon : "+d.getHostname());
-		this.daemons.put(d.getHostname(), d);
+		System.out.println("NOUVEAU Daemon : "+d.getLocalHostname());
+		this.daemons.put(d.getLocalHostname(), d);
+	}
+
+	public String getHostname() {
+		return hostname;
+	}
+
+	public void setHostname(String hostname) {
+		this.hostname = hostname;
 	}
 
 	@Override
@@ -176,6 +210,14 @@ public class Job extends UnicastRemoteObject implements ILauncher, IJob {
 		this.mapReduce = mapReduce;
 	}
 
+	public CountDownLatch getStopMappers() {
+		return stopMappers;
+	}
+
+	public void setStopMappers(CountDownLatch stopMappers) {
+		this.stopMappers = stopMappers;
+	}
+
 	/*
 	 * Lance le HeartBeatReceiver hb afin de surveiller l'état des daemons.
 	 */
@@ -194,6 +236,31 @@ public class Job extends UnicastRemoteObject implements ILauncher, IJob {
 		 */
 		
 		// TODO : vérification du nombre de daemons disponibles
+		int numberOfDaemons = this.daemons.size(); // TODO : on suppose qu'il n'y a pas de panne des daemons
+		
+		Iterator<IDaemon> it_daemons = this.getDaemons().values().iterator(); // modification concurrente possible
+		IDaemon current_daemon;
+		
+		if (this.getNumberOfMaps() <= numberOfDaemons) {
+			for(int i = 0; i < this.getNumberOfMaps() && it_daemons.hasNext(); i++) { // TODO : non-parallèle
+				current_daemon = it_daemons.next();
+				
+				// lecture du fraguement hdfs local de même nom que le fichier global
+				Format reader = new LineFormat(this.getInputFname());
+				
+				// écriture : envoie des clefs au Job, et maintient des résultats dans une HashMap locale
+				Format writer = new SocketLocalFormat(this.getHostname(), Job.portMapperKeys);
+				
+				// callback : indique la terminaison d'une tâche Map
+				try {
+					ICallBack cb = new CallBackMap(this.getStopMappers());
+					current_daemon.runMap(this.getMapReduce(), reader, writer, cb);
+				} catch (RemoteException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
 		
 		// TODO : lancement des tâches map en quantité this.numberOfMaps, en parrallèle
 		
@@ -206,8 +273,30 @@ public class Job extends UnicastRemoteObject implements ILauncher, IJob {
 		 */
 		
 		// TODO : vérification du nombre de daemons disponibles
+		numberOfDaemons = this.daemons.size(); // TODO : on suppose qu'il n'y a pas de panne des daemons
 		
-		// TODO : lancement des tâches reduce en quantité this.numberOfReduces, en parrallèle
+		it_daemons = this.getDaemons().values().iterator(); // modification concurrente possible
+		
+		if (this.getNumberOfReduces() <= numberOfDaemons) {
+			for(int i = 0; i < this.getNumberOfReduces() && it_daemons.hasNext(); i++) { // TODO : non-parallèle
+				current_daemon = it_daemons.next();
+				
+				// lecture du fraguement hdfs local de même nom que le fichier global
+				// TODO : Format reader = new LineFormat(this.getInputFname());
+				
+				// écriture : envoie des clefs au Job, et maintient des résultats dans une HashMap locale
+				// TODO : Format writer = new SocketLocalFormat(this.getHostname(), Job.portMapperKeys);
+				
+				// callback : indique la terminaison d'une tâche Map
+				try {
+					// TODO : ICallBack cb = new CallBackMap(this.getStopMappers());
+					current_daemon.runMap(this.getMapReduce(), reader, writer, cb);
+				} catch (RemoteException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
 		
 		/*
 		 * Attribution des clefs à chaque serveur et envoie d'une HashMap à chaque daemon qui indique à quel 
@@ -226,9 +315,9 @@ public class Job extends UnicastRemoteObject implements ILauncher, IJob {
 	
 	public static void main(String args[]) {
 		try {
-			LocateRegistry.createRegistry(Job.portRMI);
+			LocateRegistry.createRegistry(Job.portRegistryRMI);
 			Job job = new Job();
-			Naming.bind("//localhost:"+Job.portRMI+"/Launcher", job);
+			Naming.bind("//localhost:"+Job.portRegistryRMI+"/Launcher", job);
 			job.setHeartBeatReceiver(new HeartBeatReceiver(job.getDaemons()));
 			job.getHeartBeatReceiver().start();
 			/*
