@@ -35,13 +35,15 @@ public class HeartBeatReceiver extends Thread implements IHeartBeatReceiver {
 		while(true) {
 			try {
 				this.addEmitter(this.ss.accept());
-			} catch (SocketTimeoutException e2) {
-				e2.printStackTrace();
+			} catch (SocketTimeoutException e2) {//timeout
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
+			
 			it_sockets = this.sockets.values().iterator();
-			for(Socket s = it_sockets.next(); it_sockets.hasNext(); s = it_sockets.next()) {
+			Socket s;
+			while(it_sockets.hasNext()) {
+				s = it_sockets.next();
 				try {
 					if (s.getInputStream().read() != 1) {
 						this.removeEmitter(s);
@@ -61,6 +63,9 @@ public class HeartBeatReceiver extends Thread implements IHeartBeatReceiver {
 	@Override
 	synchronized public void removeEmitter(Socket s) {
 		String ip = s.getLocalSocketAddress().toString().split("(/|:)")[1];
+		System.out.println("REMOVE : "+ip);
+		System.out.println("IP : "+s.getInetAddress());
+		System.out.println("IP : "+s.getLocalAddress());
 		this.daemons.remove(ip);
 		this.sockets.remove(ip);
 		try {

@@ -1,15 +1,9 @@
 package formats;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Collection;
 import java.util.HashMap;
 
 public class SocketLocalFormat implements Format {
@@ -18,40 +12,71 @@ public class SocketLocalFormat implements Format {
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
+	
+	/*
+	 * Indique la position dans le "fichier" courant.
+	 */
 	private long index;
+	
+	/*
+	 * Socket lié à this.hostname:this.port.
+	 */
 	private Socket s;
+	
+	/*
+	 * Nom de l'hôte avec lequel communique le socket.
+	 */
+	private String hostname;
+	
+	/*
+	 * Numéro du port de l'hôte avec lequel communique le socket.
+	 */
 	private int port;
-	private String host;
+	
+	/*
+	 * ObjectOutputStream lié à la socket this.s.
+	 */
 	private ObjectOutputStream oos;
+	
+	/*
+	 * ObjectInputStream lié à la socket this.s.
+	 */
 	private ObjectInputStream ois;
-	private Collection<KV> kvs;
+	
+	/*
+	 * Stockage local des KVs résultats.
+	 */
+	private HashMap<String, Integer> results; // TODO : le type devrait être paramétrable
 	
 	public SocketLocalFormat(String hostname, int port) {
 		this.index = 1L;
-		this.host = host;
+		this.hostname = hostname;
 		this.port = port;
-		this.kvs = kvs;
+		this.results = new HashMap<String, Integer>();
 	}
 
 	@Override
 	public KV read() {
-		String res;
-		KV kv = null;
-		try {
-			kv = (KV) this.ois.readObject();
-		} catch (ClassNotFoundException | IOException e) {
-			e.printStackTrace();
-		}
-		this.index++;
-		return kv;
+		// TODO : utile ?
+		return null;
 	}
-
+	
+	/*
+	 * (non-Javadoc)
+	 * @see formats.FormatWriter#write(formats.KV)
+	 * on envoie une clef via la socket lorsqu'elle est nouvelle,
+	 * on ajoute le KV à la HashMap Correspondante this.results.
+	 */
 	@Override
 	public void write(KV record) {
 		try{
-			this.oos.writeObject(record.k);
-			this.kvs.put(record.k, Integer.valueOf(record.v)+this.kvs.get(record.k));
-		}catch(IOException e){
+			if (!this.results.containsKey(record.k)) {
+				this.oos.writeObject(record.k);
+				this.results.put(record.k, Integer.valueOf(record.v));
+			} else {
+				this.results.put(record.k, Integer.valueOf(record.v)+this.results.get(record.k));
+			}
+		}catch(IOException e) {
 			e.printStackTrace();
 		}
 		this.index++;
@@ -60,20 +85,15 @@ public class SocketLocalFormat implements Format {
 	@Override
 	public void open(OpenMode mode) {
 		this.index = 1L;
-		if (mode == OpenMode.R){
+		if (mode == OpenMode.R) {
 			try {
-				this.s = new Socket(this.host, this.port);
+				this.s = new Socket(this.hostname, this.port);
 				this.oos = new ObjectOutputStream(this.s.getOutputStream());
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-		}else{
-			try {
-				this.s = new Socket(this.host, this.port);
-				this.ois = new ObjectInputStream(this.s.getInputStream());
-			} catch (IOException e) {
-				e.printStackTrace();
-			}	
+		}else {
+			// TODO : utile ?
 		}
 	}
 
@@ -93,12 +113,12 @@ public class SocketLocalFormat implements Format {
 
 	@Override
 	public String getFname() {
-		return this.host;
+		return this.hostname;
 	}
 
 	@Override
 	public void setFname(String host) {
-		this.host = host;
+		this.hostname = host;
 	}
 
 	public Socket getS() {
@@ -118,11 +138,11 @@ public class SocketLocalFormat implements Format {
 	}
 
 	public String getHost() {
-		return host;
+		return hostname;
 	}
 
 	public void setHost(String host) {
-		this.host = host;
+		this.hostname = host;
 	}
 
 	public ObjectOutputStream getOos() {
@@ -141,12 +161,12 @@ public class SocketLocalFormat implements Format {
 		this.ois = ois;
 	}
 
-	public HashMap<String, Integer> getKvs() {
-		return kvs;
+	public HashMap<String, Integer> getResults() {
+		return this.results;
 	}
 
-	public void setKvs(HashMap<String, Integer> kvs) {
-		this.kvs = kvs;
+	public void setResults(HashMap<String, Integer> results) {
+		this.results = results;
 	}
 
 	public void setIndex(long index) {

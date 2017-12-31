@@ -32,7 +32,7 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 	/*
 	 * Nom de l'hôte du registry (RMI), normalement lancé lors de l'instanciation du Job.
 	 */
-	public static String rmiHost = "192.168.1.11";
+	public static String rmiHost = "172.22.222.179";
 	
 	/*
 	 * Port de l'hôte du registry (RMI) normalement lancé lors de l'instanciation du Job.
