@@ -64,11 +64,12 @@ public class HdfsClient {
 
 	public static void HdfsWrite(Format.Type fmt, String localFSSourceFname, int repFactor)
 			throws UnknownHostException, IOException, InterruptedException, ClassNotFoundException {
-		Path p = Paths.get("../data/" + localFSSourceFname);
-		long nbOfLines = Files.lines(p).count();
-		int chunkSize = (int) nbOfLines / hl.size() + 1;
+		// 1) Découper localement le fichier en morceaux de taille fixe
+		int chunkSize = 10;
+		// probablement changer en ../data/+localFSSourceName
+		int nbChunks = HdfsUtil.splitFile(localFSSourceFname, chunkSize);
 
-		INode fileNode = new INode(localFSSourceFname, repFactor);
+		INode fileNode = new INode(localFSSourceFname, repFactor, nbChunks);
 
 		HashMap<Integer, ArrayList<String>> repBlocs = HdfsUtil.getStrategieRepartition(fileNode, Commande.CMD_WRITE);
 
@@ -79,15 +80,31 @@ public class HdfsClient {
 			}
 		}
 
-		SlaveHdfsClientWrite sl;
+		ArrayList<SlaveHdfsClientWrite> slaveList = new ArrayList<SlaveHdfsClientWrite>();
+
+		/* Ecrire les morceaux de fichier sur les serveurs HDFS */
+		SlaveHdfsClientWrite slave;
 		for (Integer i : repBlocs.keySet()) {
 			System.out.println("écriture du bloc numéro " + i);
 			for (String serveur : repBlocs.get(i)) {
-				sl = new SlaveHdfsClientWrite(serveur, 8090, (i * chunkSize) + 1, chunkSize, localFSSourceFname, fmt,
-						i);
-				sl.start();
+				slave = new SlaveHdfsClientWrite(serveur, 8090, localFSSourceFname, fmt, i);
+				slaveList.add(slave);
+				slave.start();
 			}
 		}
+		
+		/* Supprimer les morceaux de fichier locaux */ 
+		for (SlaveHdfsClientWrite sl : slaveList){
+			sl.join();
+		}
+		
+		for (Integer i : repBlocs.keySet()){
+			// surement à changer avec ../data
+			Files.delete(Paths.get(localFSSourceFname + i));
+		}
+
+		// POUR TESTER : remplacer en haut le chemin de fichier en relatif par
+		// rapport à bin ; 
 	}
 
 	public static void HdfsRead(String hdfsFname, String localFSDestFname)
