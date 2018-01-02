@@ -32,7 +32,7 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 	/*
 	 * Nom de l'hôte du registry (RMI), normalement lancé lors de l'instanciation du Job.
 	 */
-	public static String rmiHost = "172.22.222.179";
+	public static String rmiHost = "192.168.1.14";
 	
 	/*
 	 * Port de l'hôte du registry (RMI) normalement lancé lors de l'instanciation du Job.
@@ -169,13 +169,18 @@ class MapSlave extends Thread {
 	}
 	
 	public void run() {
-
+		
 		this.reader.open(OpenMode.R);
 		this.writer.open(OpenMode.W);
-		this.mapper.map(reader, (FormatWriter) writer);
+		this.mapper.map(reader, writer);
 
 		//this.cb.isTerminated(this.localHost, this.localPort);
-		this.cb.isTerminated();
+		try {
+			this.cb.isTerminated();
+		} catch (RemoteException e) {
+			e.printStackTrace();
+		}
+		System.out.println("Map terminé.");
 	}
 }
 
@@ -218,7 +223,12 @@ class ReduceSlave extends Thread {
 		/*
 		 * Signalement au Job que la tâche reduce est terminée.
 		 */
-		this.callback.isTerminated();
+		try {
+			this.callback.isTerminated();
+		} catch (RemoteException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 }
 

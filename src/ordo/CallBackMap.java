@@ -18,7 +18,7 @@ public class CallBackMap extends UnicastRemoteObject implements ICallBack {
 	}
 
 	@Override
-	public void isTerminated() {
+	public void isTerminated() throws RemoteException {
 		this.barrier.countDown();
 	}
 

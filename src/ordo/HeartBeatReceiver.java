@@ -63,9 +63,6 @@ public class HeartBeatReceiver extends Thread implements IHeartBeatReceiver {
 	@Override
 	synchronized public void removeEmitter(Socket s) {
 		String ip = s.getLocalSocketAddress().toString().split("(/|:)")[1];
-		System.out.println("REMOVE : "+ip);
-		System.out.println("IP : "+s.getInetAddress());
-		System.out.println("IP : "+s.getLocalAddress());
 		this.daemons.remove(ip);
 		this.sockets.remove(ip);
 		try {

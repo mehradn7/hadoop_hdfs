@@ -44,14 +44,15 @@ public class MyMapReduce implements MapReduce {
 	public static void main(String args[]) {
 		Job j = null;
 		try {
-			j = new Job(new MyMapReduce());
+			j = new Job();
 		} catch (RemoteException e) {
 			e.printStackTrace();
 			System.exit(1);
 		}
 		System.out.println("[] Job initialisé !");
         j.setInputFormat(Format.Type.LINE);
-        j.setInputFname(args[0]);
+        j.setInputFname("../data/"+args[0]);
+        j.setOutputFname("../data/res-"+args[0]);
         long t1 = System.currentTimeMillis();
 		j.startJob(new MyMapReduce());
 		long t2 = System.currentTimeMillis();

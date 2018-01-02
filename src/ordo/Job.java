@@ -1,11 +1,14 @@
 package ordo;
 
 import java.net.InetAddress;
+import java.net.MalformedURLException;
 import java.net.UnknownHostException;
 import java.rmi.Naming;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.concurrent.CountDownLatch;
@@ -217,7 +220,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 	 * Lance le HeartBeatReceiver hb afin de surveiller l'état des daemons.
 	 */
 	public void startHeartBeat() {
-		this.hb.start();
+		Job.hb.start();
 	}
 	
 	/* 
@@ -231,15 +234,38 @@ public class Job extends UnicastRemoteObject implements IJob {
 		 */
 		
 		// Vérification du nombre de daemons disponibles
-		int numberOfDaemons = Job.daemons.size(); // TODO : on suppose qu'il n'y a pas de panne des daemons
+		ILauncher launcher = null;
+		try {
+			launcher = (ILauncher) Naming.lookup("//"+Daemon.rmiHost+":"+Daemon.rmiPort+"/Launcher");
+		} catch (MalformedURLException | RemoteException | NotBoundException e2) {
+			e2.printStackTrace();
+		}
+		int numberOfDaemons = 0;
+		try {
+			numberOfDaemons = launcher.numberOfDaemons();
+		} catch (RemoteException e2) {
+			e2.printStackTrace();
+		} // TODO : on suppose qu'il n'y a pas de panne des daemons
+		System.out.println("Nombre de Daemons connectés : "+numberOfDaemons);
+		this.setNumberOfMaps(numberOfDaemons); // TODO : fixe pour le moment
 		
-		Iterator<IDaemon> it_daemons = Job.daemons.values().iterator(); // modification concurrente possible
+		
+		Collection<IDaemon> daemons = null;
+		try {
+			daemons = launcher.getDaemons();
+		} catch (RemoteException e2) {
+			e2.printStackTrace();
+			return;
+		} // modification concurrente possible
+		Iterator<IDaemon> it_daemons = daemons.iterator();
 		IDaemon current_daemon;
 		
 		if (this.getNumberOfMaps() <= numberOfDaemons) {
 			
 			// Lancement des tâches map en quantité this.numberOfMaps, en parrallèle
-			for(int i = 0; i < this.getNumberOfMaps() && it_daemons.hasNext(); i++) { // TODO : non-parallèle
+			this.setBarrierForMappers(new CountDownLatch(this.getNumberOfMaps())); // création barrière
+			for(int i = 0; i < this.getNumberOfMaps(); i++) { // TODO : non-parallèle
+				System.out.println("Lancement du Mapper : "+i);
 				current_daemon = it_daemons.next();
 				
 				// lecture du fraguement hdfs local de même nom que le fichier global
@@ -247,7 +273,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 				
 				// écriture : envoie des clefs au Job, et maintient des résultats dans une HashMap locale
 				// TODO : Format writer = new SocketLocalFormat(this.getHostname(), Job.portMapperKeys);
-				Format writer = new KvFormat(this.getInputFname()); 
+				Format writer = new KvFormat(this.getOutputFname()); 
 				
 				// callback : indique la terminaison d'une tâche Map
 				try {
@@ -263,6 +289,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 		 * On attend la terminaison de toutes les tâches Map.
 		 */
 		try {
+			System.out.println("En attente de la terminaison des mappers...");
 			this.getBarrierForMappers().await();
 		} catch (InterruptedException e1) {
 			e1.printStackTrace();
@@ -326,34 +353,44 @@ public class Job extends UnicastRemoteObject implements IJob {
 	}
 	
 	public static void main(String args[]) {
+		System.out.println("[] : Lancement du Ressource Manager...");
 		try {
 			/*
 			 * Création d'un RMI registry et enregistrement du Job.
 			 */
 			LocateRegistry.createRegistry(Job.portRegistryRMI);
+			System.out.println("[] : RMI registry OK");
 			Launcher launcher = new Launcher();
 			Naming.bind("//localhost:"+Job.portRegistryRMI+"/Launcher", launcher);
+			System.out.println("[] : Launcher OK");
 			
 			/*
 			 * Création d'un HeartBeatReceiver pour le job et lancement du HeartBeat.
 			 */
 			Job.hb = new HeartBeatReceiver(Job.daemons);
 			Job.hb.start();
+			System.out.println("[] : HeartBeat OK");
 			
 			/*
 			 * L'accès concurrent sur les daemons oblige l'utilisation d'un Iterator.
 			 */
+			System.out.println("[] : En attente de Daemons");
+			int previousSize, diff;
+			int currentSize = 0;
+			String hst;
 			Iterator<String> it_daemons;
-			
 			  while(true) {
-			 	System.out.println("\n=====Daemons=====");
 			 	it_daemons = Job.daemons.keySet().iterator();
-			 	
-			 	String hst;
-			 	while(it_daemons.hasNext()) {
-			 		hst = it_daemons.next();
-			 		System.out.println(hst);
-			 	}
+			 	previousSize = currentSize;
+				currentSize = Job.daemons.size();
+				diff = currentSize - previousSize;
+				if (diff != 0) {
+					System.out.println("\n[] : Daemons ->");
+				 	while(it_daemons.hasNext()) {
+				 		hst = it_daemons.next();
+				 		System.out.println(" - "+hst);
+				 	}
+				}
 			 	TimeUnit.SECONDS.sleep(1);
 			 }
 		} catch (Exception e) {
