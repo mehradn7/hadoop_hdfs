@@ -498,6 +498,7 @@ class KeysReceiverSlave extends Thread {
 		this.keys = keys;
 	}
 
+	@SuppressWarnings("unchecked")
 	public void run() {
 		/*
 		 * Récupération des clefs envoyées par les daemons (tâches Maps).
