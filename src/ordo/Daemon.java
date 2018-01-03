@@ -3,6 +3,9 @@ package ordo;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
@@ -10,6 +13,7 @@ import java.util.HashMap;
 
 import formats.Format;
 import formats.Format.OpenMode;
+import hdfs.HdfsServeur;
 import map.Mapper;
 import map.Reducer;
 
@@ -32,6 +36,11 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 	public static final int portReducersKeys = 5002;
 	
 	/*
+	 * Nom du répertoire des données.
+	 */
+	private static String prefix = "hdfs";
+	
+	/*
 	 * IP de l'hôte local sous forme de String.
 	 */
 	private String localHostname;
@@ -51,11 +60,16 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 		this.localHostname = localHostname;
 		this.hb = new HeartBeatEmitter(Job.inetAddress, HeartBeatReceiver.port);
 		this.hb.start();
+		String[] tmp = Paths.get("").toAbsolutePath().toString().split("/");
+		this.prefix = "/" + tmp[1] + "/" + tmp[2] + "/" + this.prefix + "/files-" + this.localHostname + "/";
 		
 	}
 	
 	public void runMap(Mapper mapper, Format reader, Format writer, ICallBack callbackMapper) 
 			throws RemoteException {
+		reader.setFname(this.prefix + reader.getFname());
+		writer.setFname(this.prefix + writer.getFname());
+		
 		/*
 		 * On crée un thread esclave qui va exécuter le map.
 		 */
@@ -94,6 +108,22 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 	public static void main(String args[]) {
 		try {
 			String localHostname = InetAddress.getLocalHost().getHostAddress();
+			
+			/*
+			 * Création des répertoirs si besoin. 
+			 */
+			try {
+				String[] tmp = Paths.get("").toAbsolutePath().toString().split("/");
+				Daemon.prefix = "/" + tmp[1] + "/" + tmp[2] + "/" + Daemon.prefix;
+				try {
+					Files.createDirectory(Paths.get(Daemon.prefix));
+				} catch (FileAlreadyExistsException e) {
+				} // besoin de rien besoin de tout
+				Daemon.prefix = Daemon.prefix + "/files-" + localHostname;
+				Files.createDirectory(Paths.get(Daemon.prefix));
+			} catch (FileAlreadyExistsException e) {
+			} // le fichier est deja cree besoin de rien
+			
 			/*
 			 * Récupération du launcher, ici c'est job qui joue ce rôle.
 			 */
