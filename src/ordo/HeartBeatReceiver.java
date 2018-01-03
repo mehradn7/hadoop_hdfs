@@ -57,12 +57,13 @@ public class HeartBeatReceiver extends Thread implements IHeartBeatReceiver {
 
 	@Override
 	synchronized public void addEmitter(Socket s) {
-		this.sockets.put(s.getLocalSocketAddress().toString().split("(/|:)")[1], s);
+		this.sockets.put(s.getInetAddress().getHostAddress(), s);
 	}
 
 	@Override
 	synchronized public void removeEmitter(Socket s) {
-		String ip = s.getLocalSocketAddress().toString().split("(/|:)")[1];
+		String ip = s.getInetAddress().getHostAddress();
+		System.out.println("IP REMOVE : "+s.getInetAddress().getHostAddress());
 		this.daemons.remove(ip);
 		this.sockets.remove(ip);
 		try {
