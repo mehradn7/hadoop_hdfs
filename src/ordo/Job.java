@@ -1,16 +1,23 @@
 package ordo;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.UnknownHostException;
 import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -18,6 +25,7 @@ import formats.Format;
 import formats.Format.Type;
 import formats.KvFormat;
 import formats.LineFormat;
+import formats.SocketAndKvFormat;
 import formats.SocketFormat;
 import map.MapReduce;
 
@@ -32,6 +40,11 @@ public class Job extends UnicastRemoteObject implements IJob {
 	 * Nom de l'hôte du job.
 	 */
 	public String hostname;
+	
+	/*
+	 * Adresse IP de l'hôte.
+	 */
+	public static final String inetAddress = "192.168.1.14";
 	
 	/*
 	 * Port du registry RMI.
@@ -236,7 +249,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 		// Vérification du nombre de daemons disponibles
 		ILauncher launcher = null;
 		try {
-			launcher = (ILauncher) Naming.lookup("//"+Daemon.rmiHost+":"+Daemon.rmiPort+"/Launcher");
+			launcher = (ILauncher) Naming.lookup("//"+Job.inetAddress+":"+Job.portRegistryRMI+"/Launcher");
 		} catch (MalformedURLException | RemoteException | NotBoundException e2) {
 			e2.printStackTrace();
 		}
@@ -260,8 +273,13 @@ public class Job extends UnicastRemoteObject implements IJob {
 		Iterator<IDaemon> it_daemons = daemons.iterator();
 		IDaemon current_daemon;
 		
+		/*
+		 * Récupération des clefs envoyées par les daemons (tâches Maps).
+		 */
+		KeysReceiverSlave keyReceiver = new KeysReceiverSlave(this);
+		keyReceiver.start();
+		
 		if (this.getNumberOfMaps() <= numberOfDaemons) {
-			
 			// Lancement des tâches map en quantité this.numberOfMaps, en parrallèle
 			this.setBarrierForMappers(new CountDownLatch(this.getNumberOfMaps())); // création barrière
 			for(int i = 0; i < this.getNumberOfMaps(); i++) { // TODO : non-parallèle
@@ -272,8 +290,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 				Format reader = new LineFormat(this.getInputFname());
 				
 				// écriture : envoie des clefs au Job, et maintient des résultats dans une HashMap locale
-				// TODO : Format writer = new SocketLocalFormat(this.getHostname(), Job.portMapperKeys);
-				Format writer = new KvFormat(this.getOutputFname()); 
+				Format writer = new SocketAndKvFormat(this.getInputFname()+"-mapper");
 				
 				// callback : indique la terminaison d'une tâche Map
 				try {
@@ -291,21 +308,17 @@ public class Job extends UnicastRemoteObject implements IJob {
 		try {
 			System.out.println("En attente de la terminaison des mappers...");
 			this.getBarrierForMappers().await();
+			keyReceiver.join();
 		} catch (InterruptedException e1) {
 			e1.printStackTrace();
 		}
 		
+		Set<String> keys = keyReceiver.getKeys(); //Récupération des clefs envoyées par les Mappers
+		System.out.println("Clefs réceptionnées : "+keys);
+				
 		if (true) {
 			return; // TEMPORAIRE
 		}
-		
-		// TODO : lancement des tâches map en quantité this.numberOfMaps, en parrallèle
-		
-		/*
-		 * Récupération des clefs envoyées par les daemons (tâches Maps).
-		 */
-		
-		// TODO :
 		
 		/*
 		 * Lancement des tâches Reduces.
@@ -398,4 +411,74 @@ public class Job extends UnicastRemoteObject implements IJob {
 		}
 	}
 	
+}
+
+/**
+ * 
+ * Classe résponsalbe de la réception des clefs envoyées par les mappers au serveur.
+ * 
+ */
+class KeysReceiverSlave extends Thread {
+	
+	/*
+	 * Poignée du job en cours.
+	 */
+	private Job job;
+	
+	/*
+	 * Ensemble des clefs collectés.
+	 */
+	Set<String> keys;
+	
+	public KeysReceiverSlave(Job job) {
+		this.job = job;
+		this.keys = new HashSet<String>();
+	}
+	
+	public Job getJob() {
+		return job;
+	}
+
+	public void setJob(Job job) {
+		this.job = job;
+	}
+
+	public Set<String> getKeys() {
+		return keys;
+	}
+
+	public void setKeys(Set<String> keys) {
+		this.keys = keys;
+	}
+
+	public void run() {
+		/*
+		 * Récupération des clefs envoyées par les daemons (tâches Maps).
+		 */
+		try {
+			ServerSocket serverSocketForMappersKeys = new ServerSocket(Job.portMapperKeys);
+			
+			ArrayList<Socket> sockets = new ArrayList<Socket>();
+			while (sockets.size() != this.job.getNumberOfMaps()) {
+				sockets.add(serverSocketForMappersKeys.accept());
+			}
+			ObjectInputStream ois;
+			Set<String> receivedKeys;
+			for(Socket s : sockets) {
+				ois = new ObjectInputStream(s.getInputStream());
+				
+				receivedKeys = (HashSet<String>) ois.readObject();
+				this.keys.addAll(receivedKeys);
+				
+				ois.close();
+				s.close();
+			}
+			
+			serverSocketForMappersKeys.close();
+		} catch (IOException | ClassNotFoundException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+	}
+
 }

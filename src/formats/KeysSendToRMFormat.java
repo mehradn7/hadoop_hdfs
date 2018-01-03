@@ -6,7 +6,7 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.HashMap;
 
-public class SocketLocalFormat implements Format {
+public class KeysSendToRMFormat implements Format {
 	
 	/**
 	 * 
@@ -48,7 +48,7 @@ public class SocketLocalFormat implements Format {
 	 */
 	private HashMap<String, Integer> results; // TODO : le type devrait être paramétrable
 	
-	public SocketLocalFormat(String hostname, int port) {
+	public KeysSendToRMFormat(String hostname, int port) {
 		this.index = 1L;
 		this.hostname = hostname;
 		this.port = port;

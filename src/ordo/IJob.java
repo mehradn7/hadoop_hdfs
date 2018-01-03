@@ -8,6 +8,7 @@ import map.MapReduce;
 import formats.Format;
 
 public interface IJob {
+	
     public void setNumberOfReduces(int tasks);
     public void setNumberOfMaps(int tasks);
     public void setInputFormat(Format.Type ft);

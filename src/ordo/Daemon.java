@@ -30,85 +30,60 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 	private static final long serialVersionUID = 1L;
 	
 	/*
-	 * Nom de l'hôte du registry (RMI), normalement lancé lors de l'instanciation du Job.
+	 * IP de l'hôte local sous forme de String.
 	 */
-	public static String rmiHost = "192.168.1.14";
-	
-	/*
-	 * Port de l'hôte du registry (RMI) normalement lancé lors de l'instanciation du Job.
-	 */
-	public static int rmiPort = 5000;
-	
-	/*
-	 * TODO
-	 */
-	private String localHostname = null;
-	
-	/*
-	 * TODO
-	 */
-	private int localPort = 0;
+	private String localHostname;
 	
 	/*
 	 * Poignée du HeatBeatEmitter hb.
 	 */
 	private HeartBeatEmitter hb;
 	
-	/*
-	 * Résultats de la tâche Map.
-	 */
-	private Collection<KV> mapResults;
-	
-	/*
-	 * Résultats de la tâche Reduce.
-	 */
-	private Collection<KV> reduceResults;
-	
-	public Daemon(String localHostname, int port) throws UnknownHostException, IOException {
+	public Daemon(String localHostname) throws UnknownHostException, IOException {
 		super();
 		this.localHostname = localHostname;
-		this.localPort = port;
-		this.hb = new HeartBeatEmitter(Daemon.rmiHost, HeartBeatReceiver.port);
+		this.hb = new HeartBeatEmitter(Job.inetAddress, HeartBeatReceiver.port);
 		this.hb.start();
 		
 	}
 	
-	public void runMap(Mapper mapper, Format reader, Format writer, ICallBack cb) throws RemoteException {
+	public void runMap(Mapper mapper, Format reader, Format writer, ICallBack callbackMapper) 
+			throws RemoteException {
 		/*
 		 * On crée un thread esclave qui va exécuter le map.
 		 */
-		MapSlave mapperSlave = new MapSlave(reader, writer, mapper, this.mapResults, cb, this.getLocalHostname(),
-				this.localPort);
+		MapSlave mapperSlave = new MapSlave(reader, writer, mapper, callbackMapper);
 		mapperSlave.start();
 	}
 	
 	public void runReduce (Reducer reducer, Format reader, Format writer, 
-			ICallBack cb) throws RemoteException {
+			ICallBack callbackReducer) throws RemoteException {
 		/*
 		 * On crée un thread esclave qui va exécuter le reduce
 		 */
-		ReduceSlave reducerSlave = new ReduceSlave(reader, writer, reducer, this.reduceResults, cb, this.getLocalHostname(), 
-				this.localPort);
+		ReduceSlave reducerSlave = new ReduceSlave(reader, writer, reducer, callbackReducer);
 		reducerSlave.start();
 	}
-	
-	public void setLocalHostname(String hostname) {
-		this.localHostname = hostname;
-	}
-	
+
+	@Override
 	public String getLocalHostname() throws RemoteException {
 		return this.localHostname;
+	}
+
+	@Override
+	public void setLocalHostname(String hostname) throws RemoteException {
+		this.localHostname = hostname;
+		
 	}
 	
 	public static void main(String args[]) {
 		try {
-			int localPort = Integer.parseInt(args[0]);
-			String hostname = InetAddress.getLocalHost().getHostAddress();
+			String localHostname = InetAddress.getLocalHost().getHostAddress();
 			/*
 			 * Récupération du launcher, ici c'est job qui joue ce rôle.
 			 */
-			ILauncher launcher = (ILauncher) Naming.lookup("//"+Daemon.rmiHost+":"+Daemon.rmiPort+"/Launcher");
-			launcher.addDaemon(new  Daemon(hostname, localPort));
+			ILauncher launcher = (ILauncher) Naming.lookup("//"+Job.inetAddress+":"+Job.portRegistryRMI+"/Launcher");
+			launcher.addDaemon(new  Daemon(localHostname));
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -132,55 +107,48 @@ class MapSlave extends Thread {
 	private Format writer;
 	
 	/*
-	 * TODO
-	 */
-	private Collection<KV> results;
-	
-	/*
-	 * CallBack de fin du Mapper.
-	 */
-	private ICallBack cb;
-	
-	/*
 	 * Mapper.
 	 */
 	private Mapper mapper;
 	
 	/*
-	 * TODO
+	 * CallBack de fin du Mapper.
 	 */
-	private String localHost;
-	
-	/*
-	 * TODO
-	 */
-	private int localPort;
+	private ICallBack callbackMapper;
 
 
-	public MapSlave(Format reader, Format writer, Mapper mapper, Collection<KV> results, ICallBack cb, 
-			String localHost, int localPort) {
-		/* On ouvre les fichiers utiles au map */
+	public MapSlave(Format reader, Format writer, Mapper mapper, ICallBack callbackMapper) {
 		this.reader = reader;
 		this.writer = writer;
-		this.cb = cb;
-		this.results = results;
-		//this.writer.setKvs(this.results);
 		this.mapper = mapper;
+		this.callbackMapper = callbackMapper;
 	}
 	
 	public void run() {
 		
+		/*
+		 * Ouverture des entrées/sorties.
+		 */
 		this.reader.open(OpenMode.R);
 		this.writer.open(OpenMode.W);
+		
+		/*
+		 * Fonction map appliquée au fraguement local.
+		 */
 		this.mapper.map(reader, writer);
+		
+		/*
+		 * Fermeture des entrées/sorties.
+		 */
+		this.reader.close();
+		this.writer.close(); //envoie des clefs au Job.
 
-		//this.cb.isTerminated(this.localHost, this.localPort);
 		try {
-			this.cb.isTerminated();
+			this.callbackMapper.isTerminated(); //indique au Job sa terminaison.
 		} catch (RemoteException e) {
 			e.printStackTrace();
 		}
-		System.out.println("Map terminé.");
+		System.out.println("Mapper terminé.");
 	}
 }
 
@@ -192,20 +160,15 @@ class ReduceSlave extends Thread {
 
 	private Format reader;
 	private Format writer;
-	private ICallBack callback;
 	private Reducer reducer;
-	private String localHostname;
-	private int localPort;
+	private ICallBack callback;
 
 
-	public ReduceSlave(Format reader, Format writer, Reducer reducer, Collection<KV> results,
-			ICallBack callback, String localHostname, int localPort) {
+	public ReduceSlave(Format reader, Format writer, Reducer reducer, ICallBack callback) {
 		this.reader = reader;
 		this.writer = writer;
 		this.reducer = reducer;
 		this.callback = callback;
-		this.localHostname = localHostname; 
-		this.localPort = localPort;
 	}
 
 	public void run() {
