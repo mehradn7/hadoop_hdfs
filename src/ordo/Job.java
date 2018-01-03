@@ -44,7 +44,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 	/*
 	 * Adresse IP de l'hôte.
 	 */
-	public static final String inetAddress = "192.168.1.14";
+	public static final String inetAddress = "147.127.133.193";
 	
 	/*
 	 * Port du registry RMI.
@@ -414,6 +414,10 @@ public class Job extends UnicastRemoteObject implements IJob {
 	
 	public static void main(String args[]) {
 		System.out.println("[] : Lancement du Ressource Manager...");
+		try {
+			System.out.println(InetAddress.getLocalHost().getHostAddress());
+		} catch (Exception e) {
+		}
 		try {
 			/*
 			 * Création d'un RMI registry et enregistrement du Job.

@@ -116,7 +116,7 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 					Files.createDirectory(Paths.get(Daemon.prefix));
 				} catch (FileAlreadyExistsException e) {
 				} // besoin de rien besoin de tout
-				Daemon.prefix = Daemon.prefix + "/files-" + localHostname;
+				Daemon.prefix = Daemon.prefix + "/files-" + localHostname + "/";
 				Files.createDirectory(Paths.get(Daemon.prefix));
 			} catch (FileAlreadyExistsException e) {
 			} // le fichier est deja cree besoin de rien
