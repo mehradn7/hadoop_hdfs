@@ -1,5 +1,10 @@
 package hdfs;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -134,6 +139,44 @@ public class HdfsUtil {
 		}
 
 		return repartitionBlocs;
+	}
+
+	/*
+	 * Méthode qui découpe un fichier LIGNE PAR LIGNE en morceaux de taille
+	 * chunkSize (en KB) 
+	 * path : chemin d'accès du fichier 
+	 * chunkSize : la taille désirée de chaque morceau (en KB)
+	 * 
+	 * retour : le nombre de morceaux après le découpage
+	 * 
+	 * On obtient à chaque fois le 1er morceau de taille 20 KB (pas grave)
+	 */
+	public static int splitFile(String path, int chunkSize) throws IOException {
+		FileReader fileReader = new FileReader(path);
+		BufferedReader bufferedReader = new BufferedReader(fileReader);
+		String line = "";
+		int fileSize = 0;
+		int chunkNumber = 1;
+		BufferedWriter fos = new BufferedWriter(new FileWriter(path + chunkNumber, true));
+		while ((line = bufferedReader.readLine()) != null) {
+			if (fileSize + line.getBytes().length > chunkSize * 1024) {
+				fos.close();
+				fos = new BufferedWriter(new FileWriter(path + (chunkNumber++), true));
+				fos.write(line);
+				fos.newLine();
+				fileSize = line.getBytes().length;
+			} else {
+				fos.write(line);
+				fos.newLine();
+				fileSize += line.getBytes().length;
+			}
+		}
+		fos.flush();
+		fos.close();
+		bufferedReader.close();
+		
+		return chunkNumber;
+
 	}
 
 }
