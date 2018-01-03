@@ -13,29 +13,25 @@ import formats.KvFormat;
 import formats.LineFormat;
 
 public class SlaveHdfsClientWrite extends Thread {
-	
+
 	private Socket s;
-	private int startLine;
-	private int chunkSize;
 	private Format.Type fileType;
 	private Format file;
 	private String host;
 	private int port;
 	private String fname;
 	private int idBloc;
-	
-	public SlaveHdfsClientWrite(String host, int port, int startLine, int chunkSize,
-			String localFSSourceFname, Format.Type fmt, int idBloc) throws UnknownHostException, IOException {
+
+	public SlaveHdfsClientWrite(String host, int port, String localFSSourceFname,
+			Format.Type fmt, int idBloc) throws UnknownHostException, IOException {
 		this.host = host;
 		this.port = port;
 		this.s = new Socket(host, port);
-		this.startLine = startLine;
-		this.chunkSize = chunkSize;
 		this.fileType = fmt;
 		this.fname = localFSSourceFname;
 		this.idBloc = idBloc;
-		String pathString = "../data/"+localFSSourceFname;
-		switch(fmt) {
+		String pathString = "../data/" + localFSSourceFname;
+		switch (fmt) {
 		case LINE:
 			this.file = (Format) new LineFormat(pathString);
 			break;
@@ -46,27 +42,33 @@ public class SlaveHdfsClientWrite extends Thread {
 			System.out.println("Format inconnu !!!");
 		}
 	}
-	
+
 	public void run() {
-		//System.out.println("Écriture commencée...");
-		int i;
+		// System.out.println("Écriture commencée...");
+
+		// 1) Découper le fichier localement en morceaux de taille fixe (faire
+		// ça dans HdfsClient write)
+
+		// 2)Ecrire PARALLELEMENT chaque morceau sur un serveur (selon la
+		// stratégie de
+		// répartition qui sera en attribut de la classe, i.e. une HashMap
 		file.open(OpenMode.R);
 		try {
-			for (i = 1; i < startLine && (file.read()) != null; i++) {};
 			ObjectOutputStream oos = new ObjectOutputStream(s.getOutputStream());
 			oos.writeObject("write");
 			oos.writeObject(fileType.toString());
 			oos.writeObject(this.fname + this.idBloc);
 			KV kv;
-			for (i = 1; ((kv = file.read()) != null) && (i <= this.chunkSize); i++ ) {
+			while ((kv = file.read()) != null) {
 				oos.writeObject(kv);
 			}
 			oos.writeObject(null);
 			s.close();
-			//System.out.println("Écriture terminée !");
+			// System.out.println("Écriture terminée !");
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
+
+		// 3) Supprimer les morceaux de fichier (faire ça dans HdfsClient write)
 	}
 }
-

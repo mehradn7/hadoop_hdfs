@@ -11,14 +11,16 @@ public class INode implements Serializable{
 	private static final long serialVersionUID = 1L;
 	private String filename;
 	private int repFactor;
+	private int nbOfChunks;
 	private HashMap<Integer, ArrayList<String>> mapBlocs;
 
 	public INode(String filename){
 		this.filename = filename;
 	}
-	public INode(String filename, int repFactor) {
+	public INode(String filename, int repFactor, int nbOfChunks) {
 		this.filename = filename;
 		this.repFactor = repFactor;
+		this.setNbOfChunks(nbOfChunks);
 		this.mapBlocs = new HashMap<Integer, ArrayList<String>>();
 	}
 	
@@ -50,6 +52,12 @@ public class INode implements Serializable{
 	
 	public void setMapBlocs(HashMap<Integer, ArrayList<String>> mapBlocs) {
 		this.mapBlocs = mapBlocs;
+	}
+	public int getNbOfChunks() {
+		return nbOfChunks;
+	}
+	public void setNbOfChunks(int nbOfChunks) {
+		this.nbOfChunks = nbOfChunks;
 	}
 
 }
