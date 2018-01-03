@@ -60,15 +60,12 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 		this.localHostname = localHostname;
 		this.hb = new HeartBeatEmitter(Job.inetAddress, HeartBeatReceiver.port);
 		this.hb.start();
-		String[] tmp = Paths.get("").toAbsolutePath().toString().split("/");
-		this.prefix = "/" + tmp[1] + "/" + tmp[2] + "/" + this.prefix + "/files-" + this.localHostname + "/";
-		
 	}
 	
 	public void runMap(Mapper mapper, Format reader, Format writer, ICallBack callbackMapper) 
 			throws RemoteException {
-		reader.setFname(this.prefix + reader.getFname());
-		writer.setFname(this.prefix + writer.getFname());
+		reader.setFname(Daemon.prefix + reader.getFname());
+		writer.setFname(Daemon.prefix + writer.getFname());
 		
 		/*
 		 * On crée un thread esclave qui va exécuter le map.
