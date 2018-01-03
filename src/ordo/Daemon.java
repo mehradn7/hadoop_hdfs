@@ -2,20 +2,16 @@ package ordo;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
 import java.net.UnknownHostException;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.Collection;
+import java.util.HashMap;
 
-import map.Mapper;
-import map.Reducer;
 import formats.Format;
 import formats.Format.OpenMode;
-import formats.FormatWriter;
-import formats.KV;
+import map.Mapper;
+import map.Reducer;
 
 /**
  * Daemon du service Hidoop. Cette classe est chargée d'effectuer les tâches Map et Reduce.
@@ -29,6 +25,12 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 	 */
 	private static final long serialVersionUID = 1L;
 	
+
+	/*
+	 * Port de reception des clefs reçues pour la tâche reduce. 
+	 */
+	public static final int portReducersKeys = 5002;
+	
 	/*
 	 * IP de l'hôte local sous forme de String.
 	 */
@@ -38,6 +40,11 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 	 * Poignée du HeatBeatEmitter hb.
 	 */
 	private HeartBeatEmitter hb;
+	
+	/*
+	 * Hashmap qui fait correspondre à une clef l'ip d'une machine.
+	 */
+	private HashMap<String, String> keyToDaemon;
 	
 	public Daemon(String localHostname) throws UnknownHostException, IOException {
 		super();
@@ -56,8 +63,8 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 		mapperSlave.start();
 	}
 	
-	public void runReduce (Reducer reducer, Format reader, Format writer, 
-			ICallBack callbackReducer) throws RemoteException {
+	public void runReduce (Reducer reducer, Format reader, Format writer, ICallBack callbackReducer)
+			throws RemoteException {
 		/*
 		 * On crée un thread esclave qui va exécuter le reduce
 		 */
@@ -76,6 +83,14 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 		
 	}
 	
+	public HashMap<String, String> getKeyToDaemon() throws RemoteException {
+		return keyToDaemon;
+	}
+
+	public void setKeyToDaemon(HashMap<String, String> keyToDaemon) throws RemoteException{
+		this.keyToDaemon = keyToDaemon;
+	}
+
 	public static void main(String args[]) {
 		try {
 			String localHostname = InetAddress.getLocalHost().getHostAddress();

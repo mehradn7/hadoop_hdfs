@@ -125,12 +125,6 @@ public class Job extends UnicastRemoteObject implements IJob {
 			e.printStackTrace();
 		}
 	}
-	
-	public Job(MapReduce mapReduce) throws RemoteException {
-		this();
-		this.mapReduce = mapReduce;
-	}
-
 
 	public String getHostname() {
 		return hostname;
@@ -279,11 +273,16 @@ public class Job extends UnicastRemoteObject implements IJob {
 		KeysReceiverSlave keyReceiver = new KeysReceiverSlave(this);
 		keyReceiver.start();
 		
+		/*
+		 * Lancement des tâches map en quantité this.numberOfMaps, en parrallèle TODO
+		 */
 		if (this.getNumberOfMaps() <= numberOfDaemons) {
-			// Lancement des tâches map en quantité this.numberOfMaps, en parrallèle
+			
 			this.setBarrierForMappers(new CountDownLatch(this.getNumberOfMaps())); // création barrière
+			
 			for(int i = 0; i < this.getNumberOfMaps(); i++) { // TODO : non-parallèle
-				System.out.println("Lancement du Mapper : "+i);
+				System.out.println("Lancement du Mapper : "+(i+1));
+				
 				current_daemon = it_daemons.next();
 				
 				// lecture du fraguement hdfs local de même nom que le fichier global
@@ -292,9 +291,11 @@ public class Job extends UnicastRemoteObject implements IJob {
 				// écriture : envoie des clefs au Job, et maintient des résultats dans une HashMap locale
 				Format writer = new SocketAndKvFormat(this.getInputFname()+"-mapper");
 				
-				// callback : indique la terminaison d'une tâche Map
 				try {
+					// callback : indique la terminaison d'une tâche Map
 					ICallBack callbackMapper = new CallBackMap(this.getBarrierForMappers());
+					
+					// lancement du mapper sur le daemon courrant
 					current_daemon.runMap(this.getMapReduce(), reader, writer, callbackMapper);
 				} catch (RemoteException e) {
 					e.printStackTrace();
@@ -313,23 +314,69 @@ public class Job extends UnicastRemoteObject implements IJob {
 			e1.printStackTrace();
 		}
 		
-		Set<String> keys = keyReceiver.getKeys(); //Récupération des clefs envoyées par les Mappers
+		/*
+		 * On récupère l'ensemble des clefs envoyées par les mappers.
+		 */
+		Set<String> keys = keyReceiver.getKeys();
 		System.out.println("Clefs réceptionnées : "+keys);
 				
-		if (true) {
-			return; // TEMPORAIRE
-		}
-		
 		/*
 		 * Lancement des tâches Reduces.
 		 */
 		
-		// TODO : vérification du nombre de daemons disponibles
-		numberOfDaemons = Job.daemons.size(); // TODO : on suppose qu'il n'y a pas de panne des daemons
+		// Préparation pour attribution des clefs aux différentes machines
+		try {
+			numberOfDaemons = launcher.numberOfDaemons();
+		} catch (RemoteException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} // TODO : on suppose qu'il n'y a pas de panne des daemons
+		this.setNumberOfReduces(numberOfDaemons); // TODO : temporaire
 		
-		it_daemons = Job.daemons.values().iterator(); // modification concurrente possible
+		int numberOfKeys = keys.size(); // nombre de clefs reçues
+		int nbOfKeysByDaemon =  (int) (numberOfKeys/numberOfDaemons) ; // nombre de clefs par Daemon pour Reduce
+		HashMap<String, String> keyToDaemon = new HashMap<String, String>();
+		
+		try {
+			it_daemons = launcher.getDaemons().iterator();
+		} catch (RemoteException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} // modification concurrente possible
+		Iterator<String> it_keys = keys.iterator();
 		
 		if (this.getNumberOfReduces() <= numberOfDaemons) {
+			
+			/*
+			 * Répartition des clefs.
+			 */
+			System.out.println("ICI");
+			for(int i = 0; (i < this.getNumberOfReduces()); i++) {
+				current_daemon = it_daemons.next();
+				for(int j = 0; (j < nbOfKeysByDaemon) && (it_keys.hasNext()); j++) {
+					try {
+						keyToDaemon.put(it_keys.next(), current_daemon.getLocalHostname());
+					} catch (RemoteException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					it_keys.remove();
+				}
+			}
+			
+			System.out.println("KeyToDaemon : "+keyToDaemon);
+			
+			if (true) {
+				return; // TEMPORAIRE
+			}
+			
+			try {
+				it_daemons = launcher.getDaemons().iterator();
+			} catch (RemoteException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			} // modification concurrente possible
+			
 			for(int i = 0; i < this.getNumberOfReduces() && it_daemons.hasNext(); i++) { // TODO : non-parallèle
 				current_daemon = it_daemons.next();
 				
