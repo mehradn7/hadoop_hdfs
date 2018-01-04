@@ -357,6 +357,7 @@ class ReceiveReduce extends Thread {
 				}
 			} catch (SocketTimeoutException e) {
 				try {
+					this.writer.close();
 					this.ss.close();
 				} catch (IOException e1) {
 					// TODO Auto-generated catch block
@@ -371,7 +372,6 @@ class ReceiveReduce extends Thread {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
 				}
-				this.writer.close();
 			} catch (ClassNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
