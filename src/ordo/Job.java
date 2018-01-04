@@ -44,7 +44,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 	/*
 	 * Adresse IP de l'hôte.
 	 */
-	public static final String inetAddress = "192.168.1.14";
+	public static final String inetAddress = "147.127.133.193";
 	
 	/*
 	 * Port du registry RMI.
@@ -112,6 +112,11 @@ public class Job extends UnicastRemoteObject implements IJob {
 	 * Barrière des Reduces.
 	 */
 	private CountDownLatch barrierForReducers;
+	
+	/*
+	 * Barrière des Receivers.
+	 */
+	private CountDownLatch barrierForReceivers;
 	
 	/*
 	 * Constructeur par défaut du Job.
@@ -223,6 +228,14 @@ public class Job extends UnicastRemoteObject implements IJob {
 		this.barrierForReducers = barrierForReducers;
 	}
 
+	public CountDownLatch getBarrierForReceivers() {
+		return barrierForReceivers;
+	}
+
+	public void setBarrierForReceivers(CountDownLatch barrierForReceivers) {
+		this.barrierForReceivers = barrierForReceivers;
+	}
+
 	/*
 	 * Lance le HeartBeatReceiver hb afin de surveiller l'état des daemons.
 	 */
@@ -267,7 +280,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 		} // modification concurrente possible
 		Iterator<IDaemon> it_daemons = daemons.iterator();
 		IDaemon current_daemon;
-		
+
 		/*
 		 * Récupération des clefs envoyées par les daemons (tâches Maps).
 		 */
@@ -351,6 +364,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 			/*
 			 * Répartition des clefs.
 			 */
+			current_daemon = null;
 			for(int i = 0; (i < this.getNumberOfReduces()); i++) {
 				current_daemon = it_daemons.next();
 				for(int j = 0; (j < nbOfKeysByDaemon) && (it_keys.hasNext()); j++) {
@@ -361,6 +375,14 @@ public class Job extends UnicastRemoteObject implements IJob {
 						e.printStackTrace();
 					}
 					it_keys.remove();
+				}
+			}
+			while(it_keys.hasNext()) {
+				try {
+					keyToDaemon.put(it_keys.next(), current_daemon.getLocalHostname());
+				} catch (RemoteException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
 			}
 			
@@ -380,7 +402,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 			 * Lancement des receivers.
 			 */
 			
-			this.setBarrierForReducers(new CountDownLatch(this.getNumberOfReduces())); // création barrière pour reducers
+			this.setBarrierForReceivers(new CountDownLatch(this.getNumberOfReduces()));
 			
 			try {
 				it_daemons = launcher.getDaemons().iterator();
@@ -397,7 +419,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 				
 				// callback : indique la terminaison d'un reducer
 				try {
-					ICallBack callbackReceiver = new CallBackReduce(this.getBarrierForReducers());
+					ICallBack callbackReceiver = new CallBackReceiver(this.getBarrierForReceivers());
 					current_daemon.runReceiver(writer, callbackReceiver);
 				} catch (RemoteException e) {
 					// TODO Auto-generated catch block
@@ -426,10 +448,10 @@ public class Job extends UnicastRemoteObject implements IJob {
 				}
 			}
 			
-			// on attend les reducers.
+			// on attend les receivers
 			try {
 				System.out.println("En attente des receivers...");
-				this.getBarrierForReducers().await();
+				this.getBarrierForReceivers().await();
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
