@@ -6,6 +6,7 @@ import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -312,7 +313,6 @@ class SendReduce extends Thread {
 			 * Fermeture des sockets.
 			 */
 			for(ObjectOutputStream oos : ipToOos.values()) {
-				oos.writeObject(null);
 				oos.close();
 			}
 			
@@ -355,12 +355,7 @@ class ReceiveReduce extends Thread {
 				while((kv = (KV) ois.readObject()) != null) {
 					this.writer.write(kv);
 				}
-				if (kv == null) {
-					this.callbackReceiver.isTerminated();
-					this.writer.close();
-					continue;
-				}
-			} catch (IOException e) {
+			} catch (SocketTimeoutException e) {
 				try {
 					this.ss.close();
 				} catch (IOException e1) {
@@ -369,6 +364,14 @@ class ReceiveReduce extends Thread {
 				}
 				System.out.println("Fermeture du receiver !");
 				return;
+			} catch (IOException e) {
+				try {
+					this.callbackReceiver.isTerminated();
+				} catch (RemoteException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				this.writer.close();
 			} catch (ClassNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
