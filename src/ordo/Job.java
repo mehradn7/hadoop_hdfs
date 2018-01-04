@@ -364,7 +364,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 				}
 			}
 			
-			System.out.println("KeyToDaemon : "+keyToDaemon);
+			System.out.println("KeyToDaemon : " + keyToDaemon);
 			
 			try {
 				it_daemons = launcher.getDaemons().iterator(); // choix des daemons pour reduces
@@ -374,6 +374,65 @@ public class Job extends UnicastRemoteObject implements IJob {
 			} catch (RemoteException e2) {
 				// TODO Auto-generated catch block
 				e2.printStackTrace();
+			}
+			
+			/*
+			 * Lancement des receivers.
+			 */
+			
+			this.setBarrierForReducers(new CountDownLatch(this.getNumberOfReduces())); // création barrière pour reducers
+			
+			try {
+				it_daemons = launcher.getDaemons().iterator();
+			} catch (RemoteException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			} // modification concurrente possible
+			
+			for(int i = 0; i < this.getNumberOfReduces(); i++) { // TODO : non-parallèle
+				current_daemon = it_daemons.next();
+				
+				// lecture de ce qu'envoient les autres daemons
+				Format writer = new KvFormat(this.getInputFname()+"-reducerIN");
+				
+				// callback : indique la terminaison d'un reducer
+				try {
+					ICallBack callbackReceiver = new CallBackReduce(this.getBarrierForReducers());
+					current_daemon.runReceiver(writer, callbackReceiver);
+				} catch (RemoteException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+			/*
+			 * Lancement des senders.
+			 */
+			
+			try {
+				it_daemons = launcher.getDaemons().iterator();
+			} catch (RemoteException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			} // modification concurrente possible
+			
+			for(int i = 0; i < this.getNumberOfReduces(); i++) { // TODO : non-parallèle
+				current_daemon = it_daemons.next();
+				try {
+					current_daemon.runSender();
+				} catch (RemoteException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+			// on attend les reducers.
+			try {
+				System.out.println("En attente des receivers...");
+				this.getBarrierForReducers().await();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 			
 			/*

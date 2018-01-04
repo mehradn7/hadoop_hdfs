@@ -97,7 +97,18 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 		ReducerSlave reducerSlave = new ReducerSlave(reader, writer, reducer, callbackReducer, this);
 		reducerSlave.start();
 	}
-
+	
+	public void runReceiver(Format writer, ICallBack callbackReceiver) throws RemoteException {
+		writer.setFname(Daemon.prefix + writer.getFname());
+		ReceiveReduce receiveReduce = new ReceiveReduce(writer, callbackReceiver);
+		receiveReduce.start();
+	}
+	
+	public void runSender() throws RemoteException {
+		SendReduce sendReduce = new SendReduce(this);
+		sendReduce.start();
+	}
+	
 	@Override
 	public String getLocalHostname() throws RemoteException {
 		return this.localHostname;
@@ -240,18 +251,6 @@ class ReducerSlave extends Thread {
 
 	public void run() {
 		
-		SendReduce sendReduce = new SendReduce(this.daemon);
-		sendReduce.start();
-		ReceiveReduce receiveReduce = new ReceiveReduce(this.reader);
-		receiveReduce.start();
-		try {
-			sendReduce.join();
-			receiveReduce.join();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
 		/*
 		 * Lancement du reduce,
 		 * le reader : est chargé du lancement d'un serveur d'écoute pour réception des KVs provenant des
@@ -329,8 +328,9 @@ class ReceiveReduce extends Thread {
 	
 	private ServerSocket ss;
 	private Format writer;
+	private ICallBack callbackReceiver;
 	
-	public ReceiveReduce(Format writer) {
+	public ReceiveReduce(Format writer, ICallBack callbackReceiver) {
 		try {
 			this.ss = new ServerSocket(Daemon.portReducersKeys);
 			this.ss.setSoTimeout(100);
@@ -339,6 +339,7 @@ class ReceiveReduce extends Thread {
 			e.printStackTrace();
 		}
 		this.writer = writer;
+		this.callbackReceiver = callbackReceiver;
 	}
 
 	public void run() {
@@ -346,6 +347,7 @@ class ReceiveReduce extends Thread {
 		ObjectInputStream ois;
 		KV kv;
 		this.writer.open(OpenMode.W);
+		System.out.println("ouverture du fichier receiver"+this.writer.getFname());
 		while(true) {
 			try {
 				s = this.ss.accept();
@@ -357,6 +359,7 @@ class ReceiveReduce extends Thread {
 				this.writer.close();
 				try {
 					this.ss.close();
+					this.callbackReceiver.isTerminated();
 				} catch (IOException e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();

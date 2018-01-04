@@ -27,4 +27,8 @@ public interface IDaemon extends Remote {
 	
 	public void runReducer (Reducer reducer, Format reader, Format writer, ICallBack cb) 
 			throws RemoteException;
+	
+	public void runReceiver(Format writer, ICallBack callbackReceiver) throws RemoteException;
+	
+	public void runSender() throws RemoteException;
 }
