@@ -331,7 +331,6 @@ class ReceiveReduce extends Thread {
 		try {
 			this.ss = new ServerSocket(Daemon.portReducersKeys);
 			this.ss.setSoTimeout(100);
-			System.exit(1);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -353,6 +352,12 @@ class ReceiveReduce extends Thread {
 				}
 			} catch (IOException e) {
 				this.writer.close();
+				try {
+					this.ss.close();
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
 				return;
 			} catch (ClassNotFoundException e) {
 				// TODO Auto-generated catch block
