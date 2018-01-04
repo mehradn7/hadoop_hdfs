@@ -331,6 +331,7 @@ class ReceiveReduce extends Thread {
 		try {
 			this.ss = new ServerSocket(Daemon.portReducersKeys);
 			this.ss.setSoTimeout(100);
+			System.exit(1);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
