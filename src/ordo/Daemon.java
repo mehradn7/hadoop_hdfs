@@ -94,18 +94,7 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 		/*
 		 * On crée un thread esclave qui va exécuter le reduce
 		 */
-		SendReduce sendReduce = new SendReduce(this);
-		sendReduce.start();
-		ReceiveReduce receiveReduce = new ReceiveReduce(reader);
-		receiveReduce.start();
-		try {
-			sendReduce.join();
-			receiveReduce.join();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		ReducerSlave reducerSlave = new ReducerSlave(reader, writer, reducer, callbackReducer);
+		ReducerSlave reducerSlave = new ReducerSlave(reader, writer, reducer, callbackReducer, this);
 		reducerSlave.start();
 	}
 
@@ -238,16 +227,30 @@ class ReducerSlave extends Thread {
 	private Format writer;
 	private Reducer reducer;
 	private ICallBack callback;
+	private IDaemon daemon;
 
 
-	public ReducerSlave(Format reader, Format writer, Reducer reducer, ICallBack callback) {
+	public ReducerSlave(Format reader, Format writer, Reducer reducer, ICallBack callback, IDaemon daemon) {
 		this.reader = reader;
 		this.writer = writer;
 		this.reducer = reducer;
 		this.callback = callback;
+		this.daemon = daemon;
 	}
 
 	public void run() {
+		
+		SendReduce sendReduce = new SendReduce(this.daemon);
+		sendReduce.start();
+		ReceiveReduce receiveReduce = new ReceiveReduce(this.reader);
+		receiveReduce.start();
+		try {
+			sendReduce.join();
+			receiveReduce.join();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 		/*
 		 * Lancement du reduce,
