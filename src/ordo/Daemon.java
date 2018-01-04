@@ -312,6 +312,7 @@ class SendReduce extends Thread {
 			 * Fermeture des sockets.
 			 */
 			for(ObjectOutputStream oos : ipToOos.values()) {
+				oos.writeObject(null);
 				oos.close();
 			}
 			
@@ -347,7 +348,6 @@ class ReceiveReduce extends Thread {
 		ObjectInputStream ois;
 		KV kv;
 		this.writer.open(OpenMode.W);
-		System.out.println("ouverture du fichier receiver"+this.writer.getFname());
 		while(true) {
 			try {
 				s = this.ss.accept();
@@ -355,15 +355,19 @@ class ReceiveReduce extends Thread {
 				while((kv = (KV) ois.readObject()) != null) {
 					this.writer.write(kv);
 				}
+				if (kv == null) {
+					this.callbackReceiver.isTerminated();
+					this.writer.close();
+					continue;
+				}
 			} catch (IOException e) {
-				this.writer.close();
 				try {
 					this.ss.close();
-					this.callbackReceiver.isTerminated();
 				} catch (IOException e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
 				}
+				System.out.println("Fermeture du receiver !");
 				return;
 			} catch (ClassNotFoundException e) {
 				// TODO Auto-generated catch block
