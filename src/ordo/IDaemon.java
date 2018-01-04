@@ -1,8 +1,8 @@
 package ordo;
 
-import java.io.Serializable;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
+import java.util.HashMap;
 
 import formats.Format;
 import map.Mapper;
@@ -14,9 +14,17 @@ public interface IDaemon extends Remote {
 	
 	public void setLocalHostname(String hostname) throws RemoteException;
 	
+	public HashMap<String, String> getKeyToDaemon() throws RemoteException;
+	
+	public void setKeyToDaemon(HashMap<String, String> keyToDaemon) throws RemoteException;
+	
+	public String getMapperFname() throws RemoteException;
+	
+	public void setMapperFname(String mapperFname) throws RemoteException;
+	
 	public void runMap (Mapper mapper, Format reader, Format writer, ICallBack cb) 
 			throws RemoteException;
 	
-	public void runReduce (Reducer reducer, Format reader, Format writer, ICallBack cb) 
+	public void runReducer (Reducer reducer, Format reader, Format writer, ICallBack cb) 
 			throws RemoteException;
 }

@@ -4,6 +4,7 @@ import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 
 public class Launcher extends UnicastRemoteObject implements ILauncher {
 
@@ -29,6 +30,11 @@ public class Launcher extends UnicastRemoteObject implements ILauncher {
 	@Override
 	public Collection<IDaemon> getDaemons() throws RemoteException {
 		return new ArrayList<IDaemon>(Job.daemons.values());
+	}
+
+	@Override
+	public HashMap<String, IDaemon> getHashMapDaemons() throws RemoteException {
+		return Job.daemons;
 	}
 
 }

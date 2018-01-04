@@ -1,7 +1,11 @@
 package ordo;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.UnknownHostException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -9,11 +13,13 @@ import java.nio.file.Paths;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import formats.Format;
 import formats.Format.OpenMode;
-import hdfs.HdfsServeur;
+import formats.KV;
+import formats.KvFormat;
 import map.Mapper;
 import map.Reducer;
 
@@ -33,7 +39,7 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 	/*
 	 * Port de reception des clefs reçues pour la tâche reduce. 
 	 */
-	public static final int portReducersKeys = 5002;
+	public static final int portReducersKeys = 5003;
 	
 	/*
 	 * Nom du répertoire des données.
@@ -55,6 +61,11 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 	 */
 	private HashMap<String, String> keyToDaemon;
 	
+	/*
+	 * Nom du fichier résultat du mapper.
+	 */
+	private String mapperFname;
+	
 	public Daemon(String localHostname) throws UnknownHostException, IOException {
 		super();
 		this.localHostname = localHostname;
@@ -66,7 +77,8 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 			throws RemoteException {
 		reader.setFname(Daemon.prefix + reader.getFname());
 		writer.setFname(Daemon.prefix + writer.getFname());
-		
+		this.setMapperFname(writer.getFname());
+
 		/*
 		 * On crée un thread esclave qui va exécuter le map.
 		 */
@@ -74,12 +86,26 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 		mapperSlave.start();
 	}
 	
-	public void runReduce (Reducer reducer, Format reader, Format writer, ICallBack callbackReducer)
+	public void runReducer (Reducer reducer, Format reader, Format writer, ICallBack callbackReducer)
 			throws RemoteException {
+		reader.setFname(Daemon.prefix + reader.getFname());
+		writer.setFname(Daemon.prefix + writer.getFname());
+		
 		/*
 		 * On crée un thread esclave qui va exécuter le reduce
 		 */
-		ReduceSlave reducerSlave = new ReduceSlave(reader, writer, reducer, callbackReducer);
+		SendReduce sendReduce = new SendReduce(this);
+		sendReduce.start();
+		ReceiveReduce receiveReduce = new ReceiveReduce(reader);
+		receiveReduce.start();
+		try {
+			sendReduce.join();
+			receiveReduce.join();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		ReducerSlave reducerSlave = new ReducerSlave(reader, writer, reducer, callbackReducer);
 		reducerSlave.start();
 	}
 
@@ -100,6 +126,14 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 
 	public void setKeyToDaemon(HashMap<String, String> keyToDaemon) throws RemoteException{
 		this.keyToDaemon = keyToDaemon;
+	}
+
+	public String getMapperFname() throws RemoteException {
+		return mapperFname;
+	}
+
+	public void setMapperFname(String mapperFname) throws RemoteException {
+		this.mapperFname = mapperFname;
 	}
 
 	public static void main(String args[]) {
@@ -198,7 +232,7 @@ class MapSlave extends Thread {
  * Processus esclave pour lancer une tâche Reduce, cela sert à parallèliser le lancement de plusieurs
  * tâches Map/Reduce sur le même daemon.
  */
-class ReduceSlave extends Thread {
+class ReducerSlave extends Thread {
 
 	private Format reader;
 	private Format writer;
@@ -206,7 +240,7 @@ class ReduceSlave extends Thread {
 	private ICallBack callback;
 
 
-	public ReduceSlave(Format reader, Format writer, Reducer reducer, ICallBack callback) {
+	public ReducerSlave(Format reader, Format writer, Reducer reducer, ICallBack callback) {
 		this.reader = reader;
 		this.writer = writer;
 		this.reducer = reducer;
@@ -223,6 +257,7 @@ class ReduceSlave extends Thread {
 		 */
 		this.reader.open(OpenMode.R);
 		this.writer.open(OpenMode.W);
+		
 		this.reducer.reduce(this.reader, this.writer);
 
 		/*
@@ -234,6 +269,94 @@ class ReduceSlave extends Thread {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		System.out.println("Reducer terminé.");
+
 	}
 }
 
+/**
+ * Classe chargée d'envoyer les KVs du fraguement local aux reducers correspondants.
+ */
+class SendReduce extends Thread {
+
+	private IDaemon daemon;
+	
+	public SendReduce(IDaemon daemon) {
+		this.daemon = daemon;
+	}
+	
+	public void run() {
+		try {
+			HashMap<String, String> keyToDaemon = this.daemon.getKeyToDaemon();
+			HashMap<String, ObjectOutputStream> ipToOos = new HashMap<String, ObjectOutputStream>();
+			String ip_current_daemon;
+			Format reader = new KvFormat(this.daemon.getMapperFname());
+			reader.open(OpenMode.R);
+			KV kv;
+			
+			/*
+			 * Envoie des KV au reducer correspondant.
+			 */
+			while ((kv = reader.read()) != null) {
+				ip_current_daemon = keyToDaemon.get(kv.k);
+				if (!ipToOos.containsKey(ip_current_daemon)) {
+					ipToOos.put(ip_current_daemon, new ObjectOutputStream(
+							(new Socket(ip_current_daemon, Daemon.portReducersKeys)).getOutputStream()));
+				}
+				ipToOos.get(ip_current_daemon).writeObject(kv);
+			}
+			
+			/*
+			 * Fermeture des sockets.
+			 */
+			for(ObjectOutputStream oos : ipToOos.values()) {
+				oos.close();
+			}
+			
+		} catch (RemoteException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+}
+
+class ReceiveReduce extends Thread {
+	
+	private ServerSocket ss;
+	private Format writer;
+	
+	public ReceiveReduce(Format writer) {
+		try {
+			this.ss = new ServerSocket(Daemon.portReducersKeys);
+			this.ss.setSoTimeout(100);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		this.writer = writer;
+	}
+
+	public void run() {
+		Socket s;
+		ObjectInputStream ois;
+		KV kv;
+		this.writer.open(OpenMode.W);
+		while(true) {
+			try {
+				s = this.ss.accept();
+				ois = new ObjectInputStream(s.getInputStream());
+				while((kv = (KV) ois.readObject()) != null) {
+					this.writer.write(kv);
+				}
+			} catch (IOException e) {
+				this.writer.close();
+				return;
+			} catch (ClassNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+}

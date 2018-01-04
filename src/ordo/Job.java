@@ -44,7 +44,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 	/*
 	 * Adresse IP de l'hôte.
 	 */
-	public static final String inetAddress = "147.127.133.193";
+	public static final String inetAddress = "192.168.1.14";
 	
 	/*
 	 * Port du registry RMI.
@@ -111,7 +111,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 	/*
 	 * Barrière des Reduces.
 	 */
-	private CountDownLatch barrierForReduces;
+	private CountDownLatch barrierForReducers;
 	
 	/*
 	 * Constructeur par défaut du Job.
@@ -215,12 +215,12 @@ public class Job extends UnicastRemoteObject implements IJob {
 		this.barrierForMappers = barrierForMappers;
 	}
 
-	public CountDownLatch getBarrierForReduces() {
-		return barrierForReduces;
+	public CountDownLatch getBarrierForReducers() {
+		return barrierForReducers;
 	}
 
-	public void setBarrierForReduces(CountDownLatch barrierForReduces) {
-		this.barrierForReduces = barrierForReduces;
+	public void setBarrierForReducers(CountDownLatch barrierForReducers) {
+		this.barrierForReducers = barrierForReducers;
 	}
 
 	/*
@@ -254,6 +254,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 			e2.printStackTrace();
 		} // TODO : on suppose qu'il n'y a pas de panne des daemons
 		System.out.println("Nombre de Daemons connectés : "+numberOfDaemons);
+		
 		this.setNumberOfMaps(numberOfDaemons); // TODO : fixe pour le moment
 		
 		
@@ -350,7 +351,6 @@ public class Job extends UnicastRemoteObject implements IJob {
 			/*
 			 * Répartition des clefs.
 			 */
-			System.out.println("ICI");
 			for(int i = 0; (i < this.getNumberOfReduces()); i++) {
 				current_daemon = it_daemons.next();
 				for(int j = 0; (j < nbOfKeysByDaemon) && (it_keys.hasNext()); j++) {
@@ -366,9 +366,21 @@ public class Job extends UnicastRemoteObject implements IJob {
 			
 			System.out.println("KeyToDaemon : "+keyToDaemon);
 			
-			if (true) {
-				return; // TEMPORAIRE
+			try {
+				it_daemons = launcher.getDaemons().iterator(); // choix des daemons pour reduces
+				for(int i = 0; i < this.getNumberOfReduces(); i++) {
+					it_daemons.next().setKeyToDaemon(keyToDaemon);
+				}
+			} catch (RemoteException e2) {
+				// TODO Auto-generated catch block
+				e2.printStackTrace();
 			}
+			
+			/*
+			 * Lancement des reducers.
+			 */
+			
+			this.setBarrierForReducers(new CountDownLatch(this.getNumberOfReduces())); // création barrière pour reducers
 			
 			try {
 				it_daemons = launcher.getDaemons().iterator();
@@ -377,19 +389,19 @@ public class Job extends UnicastRemoteObject implements IJob {
 				e1.printStackTrace();
 			} // modification concurrente possible
 			
-			for(int i = 0; i < this.getNumberOfReduces() && it_daemons.hasNext(); i++) { // TODO : non-parallèle
+			for(int i = 0; i < this.getNumberOfReduces(); i++) { // TODO : non-parallèle
 				current_daemon = it_daemons.next();
 				
 				// lecture de ce qu'envoient les autres daemons
-				Format reader = new SocketFormat(Job.portMapperKeys);
+				Format reader = new KvFormat(this.getInputFname()+"-reducerIN");
 				
 				// écriture : locale pour le moment
-				Format writer = new KvFormat(this.getInputFname()); // TODO : temporaire
+				Format writer = new KvFormat(this.getInputFname()+"-reducerOUT"); // TODO : temporaire
 				
-				// callback : indique la terminaison d'une tâche Map
+				// callback : indique la terminaison d'un reducer
 				try {
-					ICallBack callbackReduce = new CallBackReduce(this.getBarrierForReduces());
-					current_daemon.runReduce(this.getMapReduce(), reader, writer, callbackReduce);
+					ICallBack callbackReduce = new CallBackReduce(this.getBarrierForReducers());
+					current_daemon.runReducer(this.getMapReduce(), reader, writer, callbackReduce);
 				} catch (RemoteException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -397,14 +409,13 @@ public class Job extends UnicastRemoteObject implements IJob {
 			}
 		}
 		
-		/*
-		 * Attribution des clefs à chaque serveur et envoie d'une HashMap à chaque daemon qui indique à quel 
-		 * daemon envoyer chaque clef.
-		 */
-		
-		// TODO : envoie des hashmaps<Key, Daemons> aux daemons
-		
-		// TODO : les daemons effectuent le reduce
+		try {
+			System.out.println("En attente des reducers...");
+			this.getBarrierForReducers().await(); // on attend la fin des reducers.
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 		/*
 		 * Récupération des réduces pour concaténation et écriture du résultat final.
@@ -415,7 +426,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 	public static void main(String args[]) {
 		System.out.println("[] : Lancement du Ressource Manager...");
 		try {
-			System.out.println(InetAddress.getLocalHost().getHostAddress());
+			System.out.println("[] : Host = "+InetAddress.getLocalHost().getHostAddress());
 		} catch (Exception e) {
 		}
 		try {
