@@ -10,6 +10,8 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+import javax.swing.plaf.synth.SynthSeparatorUI;
+
 import formats.Format;
 import formats.KV;
 import formats.KvFormat;
@@ -67,6 +69,7 @@ public class HdfsServeur {
 		String cmd = "";
 		ObjectInputStream ois = null;
 		while (true) {
+			System.out.println("SERVER READY");
 			s = ss.accept(); // Bloquante
 			System.out.println(HdfsServeur.prefixlog + "Le serveur accepte une nouvelle connexion.");
 			try {
@@ -115,8 +118,6 @@ public class HdfsServeur {
 		String fileType = (String) ois.readObject();
 		String fileName = (String) ois.readObject();
 		Format fmt = HdfsServeur.getFormat(fileType, fileName);
-		// System.out.println("Format : "+fmt);
-		// System.out.println("Filename : "+fileName);
 		fmt.open(Format.OpenMode.W);
 		System.out.println(HdfsServeur.prefixlog + "Writing : " + fileName);
 		while ((res = (KV) ois.readObject()) != null) {

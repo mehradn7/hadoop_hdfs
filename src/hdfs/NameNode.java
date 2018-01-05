@@ -5,6 +5,9 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.sql.Date;
+import java.sql.Time;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -14,7 +17,7 @@ import java.util.Map;
 public class NameNode {
 	public static ServerSocket ss;
 	public static Socket s;
-	public static String hostname = "bobafett"; /* TODO : namenode.txt */
+	public static String hostname = "yoda"; /* TODO : namenode.txt */
 	public static int port = 8091;
 	public static Map<String, Integer> availableServers = new LinkedHashMap<String, Integer>();
 	public static List<INode> listINodes = new ArrayList<INode>();
@@ -25,10 +28,13 @@ public class NameNode {
 		while (true) {
 			/* Recevoir une requête */
 			s = ss.accept();
+			System.out.println(Instant.now());
 			ObjectInputStream ois = new ObjectInputStream(s.getInputStream());
 			ObjectOutputStream oos;
 			INode inode;
+			System.out.println("NN LA");
 			String cmd = (String) ois.readObject();
+			System.out.println("NN ICI");
 
 			switch (cmd) {
 			case "connect":
@@ -75,12 +81,12 @@ public class NameNode {
 		inode.setMapBlocs(repartitionBlocs);
 		NameNode.listINodes.add(inode);
 
-		for (INode in : listINodes) {
+		/*for (INode in : listINodes) {
 			System.out.println(in.getFilename());
 			for (Integer i : in.getMapBlocs().keySet()) {
 				System.out.println(i + "->" + in.getMapBlocs().get(i));
 			}
-		}
+		} */
 
 	}
 

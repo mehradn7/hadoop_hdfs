@@ -44,7 +44,6 @@ public class HdfsClient {
 		INode fileNode = new INode(hdfsFname);
 
 		HashMap<Integer, ArrayList<String>> repBlocs = HdfsUtil.getStrategieRepartition(fileNode, Commande.CMD_DELETE);
-
 		for (Integer i : repBlocs.keySet()) {
 			for (String server : repBlocs.get(i)) {
 				System.out.println(i + "->" + server);
@@ -67,7 +66,6 @@ public class HdfsClient {
 		// 1) Découper localement le fichier en morceaux de taille fixe
 		int chunkSize = 10000;// en Ko
 		int nbChunks = HdfsUtil.splitFile("../data/" + localFSSourceFname, chunkSize);
-		System.out.println(nbChunks);
 
 		INode fileNode = new INode(localFSSourceFname, repFactor, nbChunks);
 
