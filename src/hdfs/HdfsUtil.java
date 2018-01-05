@@ -91,7 +91,7 @@ public class HdfsUtil {
 	 */
 	public static HashMap<Integer, ArrayList<String>> repartirBlocs(Map<String, Integer> availableServers,
 			int repFactor) {
-		HashMap<Integer, ArrayList<String>> repartitionBlocs = new HashMap<Integer, ArrayList<String>>();
+		/*HashMap<Integer, ArrayList<String>> repartitionBlocs = new HashMap<Integer, ArrayList<String>>();
 
 		// liste contenant le nom des serveurs disponibles
 		ArrayList<String> listServers = new ArrayList<String>(availableServers.keySet());
@@ -137,19 +137,33 @@ public class HdfsUtil {
 			}
 
 		}
-
-		return repartitionBlocs;
+*/
+		HashMap<Integer, ArrayList<String>> repBlocs = new HashMap<Integer, ArrayList<String>>();
+		ArrayList<String> a1 = new ArrayList<String>();
+		a1.add("carbone");
+		a1.add("bore");
+		ArrayList<String> a2 = new ArrayList<String>();
+		a2.add("carbone");
+		a2.add("luke");
+		ArrayList<String> a3 = new ArrayList<String>();
+		a3.add("luke");
+		a3.add("bore");
+		
+		repBlocs.put(1, a1);
+		repBlocs.put(2, a2);
+		repBlocs.put(3, a3);
+		
+		return repBlocs;
 	}
 
 	/*
 	 * Méthode qui découpe un fichier LIGNE PAR LIGNE en morceaux de taille
-	 * chunkSize (en KB) 
-	 * path : chemin d'accès du fichier 
-	 * chunkSize : la taille désirée de chaque morceau (en KB)
+	 * chunkSize (en KB) path : chemin d'accès du fichier chunkSize : la taille
+	 * désirée de chaque morceau (en KB)
 	 * 
 	 * retour : le nombre de morceaux après le découpage
 	 * 
-	 * On obtient à chaque fois le 1er morceau de taille 20 KB (pas grave)
+	 * TESTS : OK
 	 */
 	public static int splitFile(String path, int chunkSize) throws IOException {
 		FileReader fileReader = new FileReader(path);
@@ -160,8 +174,11 @@ public class HdfsUtil {
 		BufferedWriter fos = new BufferedWriter(new FileWriter(path + chunkNumber, true));
 		while ((line = bufferedReader.readLine()) != null) {
 			if (fileSize + line.getBytes().length > chunkSize * 1024) {
+				System.out.println(
+						"ça dépasse le chunkSize à fileSize=" + fileSize + "et line.length=" + line.getBytes().length);
+				;
 				fos.close();
-				fos = new BufferedWriter(new FileWriter(path + (chunkNumber++), true));
+				fos = new BufferedWriter(new FileWriter(path + (++chunkNumber), true));
 				fos.write(line);
 				fos.newLine();
 				fileSize = line.getBytes().length;
@@ -174,7 +191,7 @@ public class HdfsUtil {
 		fos.flush();
 		fos.close();
 		bufferedReader.close();
-		
+
 		return chunkNumber;
 
 	}
