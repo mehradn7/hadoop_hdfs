@@ -78,7 +78,7 @@ public class HdfsUtil {
 			System.out.println("Erreur : commande inconnue ");
 			break;
 		}
-		
+
 		s.close();
 
 		return repartitionBlocs;
@@ -89,10 +89,12 @@ public class HdfsUtil {
 	 * Méthode statique qui renvoie une répartition des blocs d'un fichier en
 	 * fonction des serveurs disponibles et du facteur de réplication. Cette
 	 * méthode est une boîte noire qui peut être vue comme indépendante de HDFS
+	 * PRECONDITION : repFactor <= nbServers
 	 */
 	public static HashMap<Integer, ArrayList<String>> repartirBlocs(Map<String, Integer> availableServers,
-			int repFactor) {
-		/*HashMap<Integer, ArrayList<String>> repartitionBlocs = new HashMap<Integer, ArrayList<String>>();
+			int repFactor, int nbFragment) {
+
+		HashMap<Integer, ArrayList<String>> repartitionBlocs = new HashMap<Integer, ArrayList<String>>();
 
 		// liste contenant le nom des serveurs disponibles
 		ArrayList<String> listServers = new ArrayList<String>(availableServers.keySet());
@@ -100,22 +102,24 @@ public class HdfsUtil {
 		// Nombre de serveurs disponibles
 		int nbServers = availableServers.size();
 
-		// On dispose tout d'abord un fragment du fichier sur chacun des
+		// On dispose tout d'abord au moins un fragment du fichier sur chacun des
 		// serveurs disponibles
-		for (int i = 0; i < nbServers; i++) {
+		for (int i = 0; i < nbFragment; i++) {
+			int j;
+			j = i % nbServers;
 			ArrayList<String> listeServeurs = new ArrayList<String>();
-			listeServeurs.add(listServers.get(i));
+			listeServeurs.add(listServers.get(j));
 			repartitionBlocs.put(i, listeServeurs);
 		}
 		if (repFactor > 1) {
 			Random rand = new Random();
 			int randNumber;
 			// On considère chaque fragment
-			for (int i = 0; i < nbServers; i++) {
+			for (int i = 0; i < nbFragment; i++) {
 
 				// On recrée la liste des serveurs disponibles
 				listServers = new ArrayList<String>(availableServers.keySet());
-				listServers.remove(i);
+				listServers.remove(i % nbServers);
 
 				// Et on le duplique autant de fois que nécessaire
 				for (int j = 0; j < (repFactor - 1); j++) {
@@ -138,7 +142,9 @@ public class HdfsUtil {
 			}
 
 		}
-*/
+
+		return repartitionBlocs;
+/*
 		HashMap<Integer, ArrayList<String>> repBlocs = new HashMap<Integer, ArrayList<String>>();
 		ArrayList<String> a1 = new ArrayList<String>();
 		a1.add("carbone");
@@ -149,21 +155,23 @@ public class HdfsUtil {
 		ArrayList<String> a3 = new ArrayList<String>();
 		a3.add("luke");
 		a3.add("bore");
-		
+
 		repBlocs.put(1, a1);
 		repBlocs.put(2, a2);
 		repBlocs.put(3, a3);
-		
+
 		return repBlocs;
+
+		*/
 	}
 
 	/*
 	 * Méthode qui découpe un fichier LIGNE PAR LIGNE en morceaux de taille
 	 * chunkSize (en KB) path : chemin d'accès du fichier chunkSize : la taille
 	 * désirée de chaque morceau (en KB)
-	 * 
+	 *
 	 * retour : le nombre de morceaux après le découpage
-	 * 
+	 *
 	 * TESTS : OK
 	 */
 	public static int splitFile(String path, int chunkSize) throws IOException {
