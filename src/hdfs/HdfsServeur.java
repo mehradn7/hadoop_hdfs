@@ -6,79 +6,106 @@ import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-
-import javax.swing.plaf.synth.SynthSeparatorUI;
 
 import formats.Format;
 import formats.KV;
 import formats.KvFormat;
 import formats.LineFormat;
 
-public class HdfsServeur {
+public class HdfsServeur implements Runnable {
 
-	public static String prefix = "hdfs";
-	public static int port;
-	public static Format file;
-	public static Socket s;
-	public static String hstname;
-	public static String prefixlog;
+	protected String prefix = "hdfs";
+	protected int port;
+	protected Format file;
+	protected Socket s;
+	protected String hstname;
+	protected String prefixlog;
 
 	/**
 	 * Permet de créer un noeud (serveur) hdfs commande : java hdfsserveur port
 	 * 
 	 * @param args
-	 * @throws IOException
-	 * @throws ClassNotFoundException
 	 */
-	public static void main(String[] args) throws IOException, ClassNotFoundException {
+	public void run() {
 		// port = Integer.parseInt(args[0]);
-		HdfsServeur.port = 8090;
-		HdfsServeur.hstname = InetAddress.getLocalHost().getHostName();
+		this.port = 8090;
+		try {
+			this.hstname = InetAddress.getLocalHost().getHostName();
+		} catch (UnknownHostException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 
 		/* Signaler la connexion au NameNode */
 
-		Socket sn = new Socket(NameNode.hostname, NameNode.port);
-		ObjectOutputStream oos = new ObjectOutputStream(sn.getOutputStream());
-		oos.writeObject("connect");
-		oos.writeObject(hstname);
-		oos.writeInt(port);
-		oos.close();
-		sn.close();
+		try {
+			Socket sn = new Socket(NameNode.hostname, NameNode.port);
+			ObjectOutputStream oos = new ObjectOutputStream(sn.getOutputStream());
+			oos.writeObject("connect");
+			oos.writeObject(hstname);
+			oos.writeInt(port);
+			oos.close();
+			sn.close();
+		} catch (UnknownHostException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 
 		/* Attendre les commandes du client */
-		HdfsServeur.prefixlog = "[" + HdfsServeur.hstname + ":" + HdfsServeur.port + "] : ";
-		@SuppressWarnings("resource") // libérée automatiquement à la fin du
-										// process
-		ServerSocket ss = new ServerSocket(port);
+		this.prefixlog = "[" + this.hstname + ":" + this.port + "] : ";
+		ServerSocket ss = null;
+		try {
+			ss = new ServerSocket(port);
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 		try {
 			String[] tmp = Paths.get("").toAbsolutePath().toString().split("/");
-			HdfsServeur.prefix = "/" + tmp[1] + "/" + tmp[2] + "/" + HdfsServeur.prefix;
+			this.prefix = "/" + tmp[1] + "/" + tmp[2] + "/" + this.prefix;
 			try {
-				Files.createDirectory(Paths.get(HdfsServeur.prefix));
+				Files.createDirectory(Paths.get(this.prefix));
 			} catch (FileAlreadyExistsException e) {
 			} // besoin de rien besoin de tout
-			HdfsServeur.prefix = HdfsServeur.prefix + "/files-" + HdfsServeur.hstname;
-			Files.createDirectory(Paths.get(HdfsServeur.prefix));
+			catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			this.prefix = this.prefix + "/files-" + this.hstname;
+			Files.createDirectory(Paths.get(this.prefix));
 		} catch (FileAlreadyExistsException e) {
 		} // le fichier est deja cree besoin de rien
-		System.out.println(HdfsServeur.prefixlog + "Le serveur est lancé.");
+		catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		System.out.println(this.prefixlog + "Le serveur est lancé.");
 
 		String cmd = "";
 		ObjectInputStream ois = null;
 		while (true) {
 			System.out.println("SERVER READY");
-			s = ss.accept(); // Bloquante
-			System.out.println(HdfsServeur.prefixlog + "Le serveur accepte une nouvelle connexion.");
+			try {
+				s = ss.accept();
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			} // Bloquante
+			System.out.println(this.prefixlog + "Le serveur accepte une nouvelle connexion.");
 			try {
 				ois = new ObjectInputStream(s.getInputStream());
 				cmd = (String) ois.readObject();
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-			System.out.println(HdfsServeur.prefixlog + "Action demandée : " + cmd);
+			System.out.println(this.prefixlog + "Action demandée : " + cmd);
 			switch (cmd) {
 			case "write":
 				// ce genre de try sert à éviter de faire crash le serveur par
@@ -87,7 +114,7 @@ public class HdfsServeur {
 					write(ois);
 				} catch (Exception e) {
 					e.printStackTrace();
-					System.out.println(HdfsServeur.prefixlog + "Erreur...");
+					System.out.println(this.prefixlog + "Erreur...");
 				}
 				break;
 			case "delete":
@@ -95,7 +122,7 @@ public class HdfsServeur {
 					delete(ois);
 				} catch (Exception e) {
 					e.printStackTrace();
-					System.out.println(HdfsServeur.prefixlog + "Erreur...");
+					System.out.println(this.prefixlog + "Erreur...");
 				}
 				break;
 			case "read":
@@ -103,34 +130,34 @@ public class HdfsServeur {
 					read(ois);
 				} catch (Exception e) {
 					e.printStackTrace();
-					System.out.println(HdfsServeur.prefixlog + "Erreur...");
+					System.out.println(this.prefixlog + "Erreur...");
 				}
 				break;
 			default:
-				System.out.println(HdfsServeur.prefixlog + "Erreur sur la commande...");
+				System.out.println(this.prefixlog + "Erreur sur la commande...");
 				break;
 			}
 		}
 	}
 
-	public static void write(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+	public void write(ObjectInputStream ois) throws IOException, ClassNotFoundException {
 		KV res;
 		String fileType = (String) ois.readObject();
 		String fileName = (String) ois.readObject();
-		Format fmt = HdfsServeur.getFormat(fileType, fileName);
+		Format fmt = this.getFormat(fileType, fileName);
 		fmt.open(Format.OpenMode.W);
-		System.out.println(HdfsServeur.prefixlog + "Writing : " + fileName);
+		System.out.println(this.prefixlog + "Writing : " + fileName);
 		while ((res = (KV) ois.readObject()) != null) {
 			fmt.write(res);
 		}
 		fmt.close();
-		System.out.println(HdfsServeur.prefixlog + "Le serveur a fini d'écrire : " + fileName);
+		System.out.println(this.prefixlog + "Le serveur a fini d'écrire : " + fileName);
 	}
 
-	public static void read(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+	public void read(ObjectInputStream ois) throws IOException, ClassNotFoundException {
 		String fileName = (String) ois.readObject();
-		System.out.println(HdfsServeur.prefixlog + "Lecture de : " + fileName);
-		Format fmt = (Format) new LineFormat(HdfsServeur.prefix + "/" + fileName);
+		System.out.println(this.prefixlog + "Lecture de : " + fileName);
+		Format fmt = (Format) new LineFormat(this.prefix + "/" + fileName);
 		fmt.open(Format.OpenMode.R);
 		KV res;
 		ObjectOutputStream oos = new ObjectOutputStream(s.getOutputStream());
@@ -139,22 +166,22 @@ public class HdfsServeur {
 		}
 		fmt.close();
 		oos.writeObject(null);
-		System.out.println(HdfsServeur.prefixlog + "Le serveur a fini de lire : " + fileName);
+		System.out.println(this.prefixlog + "Le serveur a fini de lire : " + fileName);
 	}
 
-	public static void delete(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+	public void delete(ObjectInputStream ois) throws IOException, ClassNotFoundException {
 		String fileName = (String) ois.readObject();
 		try {
-			Files.delete(Paths.get(HdfsServeur.prefix + "/" + fileName));
-			System.out.println(HdfsServeur.prefixlog + "suppression du fichier -> " + fileName);
+			Files.delete(Paths.get(this.prefix + "/" + fileName));
+			System.out.println(this.prefixlog + "suppression du fichier -> " + fileName);
 		} catch (java.nio.file.NoSuchFileException e) {
-			System.out.println(HdfsServeur.prefixlog + "fichier introuvable : " + fileName);
+			System.out.println(this.prefixlog + "fichier introuvable : " + fileName);
 		}
 	}
 
-	public static Format getFormat(String fileType, String fileName) {
+	public Format getFormat(String fileType, String fileName) {
 		Format file;
-		String filePath = HdfsServeur.prefix + "/" + fileName;
+		String filePath = this.prefix + "/" + fileName;
 		switch (fileType) {
 		case "LINE":
 			file = (Format) new LineFormat(filePath);
@@ -164,7 +191,7 @@ public class HdfsServeur {
 			break;
 		default:
 			file = null;
-			System.out.println(HdfsServeur.prefixlog + "Format non reconnu !!!");
+			System.out.println(this.prefixlog + "Format non reconnu !!!");
 		}
 		return file;
 	}
