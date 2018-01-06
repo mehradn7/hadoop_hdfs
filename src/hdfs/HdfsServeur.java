@@ -11,6 +11,8 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+import javax.swing.plaf.synth.SynthSeparatorUI;
+
 import formats.Format;
 import formats.KV;
 import formats.KvFormat;
@@ -59,7 +61,7 @@ public class HdfsServeur implements Runnable {
 		}
 
 		/* Attendre les commandes du client */
-		this.prefixlog = "[" + this.hstname + ":" + this.port + "] : ";
+
 		ServerSocket ss = null;
 		try {
 			ss = new ServerSocket(port);
@@ -85,114 +87,23 @@ public class HdfsServeur implements Runnable {
 		catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+
 		}
+		this.prefixlog = "[" + this.hstname + ":" + this.port + "] : ";
+
 		System.out.println(this.prefixlog + "Le serveur est lancé.");
 
-		String cmd = "";
-		ObjectInputStream ois = null;
 		while (true) {
-			System.out.println("SERVER READY");
 			try {
+				System.out.println("LAAA");
 				s = ss.accept();
+				System.out.println("SERVER READY");
 			} catch (IOException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			} // Bloquante
-			System.out.println(this.prefixlog + "Le serveur accepte une nouvelle connexion.");
-			try {
-				ois = new ObjectInputStream(s.getInputStream());
-				cmd = (String) ois.readObject();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-			System.out.println(this.prefixlog + "Action demandée : " + cmd);
-			switch (cmd) {
-			case "write":
-				// ce genre de try sert à éviter de faire crash le serveur par
-				// une mauvaise manip du client
-				try {
-					write(ois);
-				} catch (Exception e) {
-					e.printStackTrace();
-					System.out.println(this.prefixlog + "Erreur...");
-				}
-				break;
-			case "delete":
-				try {
-					delete(ois);
-				} catch (Exception e) {
-					e.printStackTrace();
-					System.out.println(this.prefixlog + "Erreur...");
-				}
-				break;
-			case "read":
-				try {
-					read(ois);
-				} catch (Exception e) {
-					e.printStackTrace();
-					System.out.println(this.prefixlog + "Erreur...");
-				}
-				break;
-			default:
-				System.out.println(this.prefixlog + "Erreur sur la commande...");
-				break;
-			}
-		}
-	}
 
-	public void write(ObjectInputStream ois) throws IOException, ClassNotFoundException {
-		KV res;
-		String fileType = (String) ois.readObject();
-		String fileName = (String) ois.readObject();
-		Format fmt = this.getFormat(fileType, fileName);
-		fmt.open(Format.OpenMode.W);
-		System.out.println(this.prefixlog + "Writing : " + fileName);
-		while ((res = (KV) ois.readObject()) != null) {
-			fmt.write(res);
-		}
-		fmt.close();
-		System.out.println(this.prefixlog + "Le serveur a fini d'écrire : " + fileName);
-	}
+			new Thread(new TraitantConnexion(s, this.hstname, this.port, this.prefix)).start();
 
-	public void read(ObjectInputStream ois) throws IOException, ClassNotFoundException {
-		String fileName = (String) ois.readObject();
-		System.out.println(this.prefixlog + "Lecture de : " + fileName);
-		Format fmt = (Format) new LineFormat(this.prefix + "/" + fileName);
-		fmt.open(Format.OpenMode.R);
-		KV res;
-		ObjectOutputStream oos = new ObjectOutputStream(s.getOutputStream());
-		while ((res = fmt.read()) != null) {
-			oos.writeObject(res);
 		}
-		fmt.close();
-		oos.writeObject(null);
-		System.out.println(this.prefixlog + "Le serveur a fini de lire : " + fileName);
-	}
-
-	public void delete(ObjectInputStream ois) throws IOException, ClassNotFoundException {
-		String fileName = (String) ois.readObject();
-		try {
-			Files.delete(Paths.get(this.prefix + "/" + fileName));
-			System.out.println(this.prefixlog + "suppression du fichier -> " + fileName);
-		} catch (java.nio.file.NoSuchFileException e) {
-			System.out.println(this.prefixlog + "fichier introuvable : " + fileName);
-		}
-	}
-
-	public Format getFormat(String fileType, String fileName) {
-		Format file;
-		String filePath = this.prefix + "/" + fileName;
-		switch (fileType) {
-		case "LINE":
-			file = (Format) new LineFormat(filePath);
-			break;
-		case "KV":
-			file = (Format) new KvFormat(filePath);
-			break;
-		default:
-			file = null;
-			System.out.println(this.prefixlog + "Format non reconnu !!!");
-		}
-		return file;
 	}
 }

@@ -82,9 +82,12 @@ public class HdfsClient {
 
 		// Ecrire les morceaux de fichier sur les serveurs HDFS
 		SlaveHdfsClientWrite slave;
+		int k = 0;
 		for (Integer i : repBlocs.keySet()) {
 			System.out.println("écriture du bloc numéro " + i);
 			for (String serveur : repBlocs.get(i)) {
+				k++;
+				System.out.println(k);
 				slave = new SlaveHdfsClientWrite(serveur, 8090, localFSSourceFname, fmt, i);
 				slaveList.add(slave);
 				slave.start();

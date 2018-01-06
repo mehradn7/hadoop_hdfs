@@ -78,8 +78,9 @@ public class HdfsUtil {
 			System.out.println("Erreur : commande inconnue ");
 			break;
 		}
+		
+		s.close();
 
-		/* Déterminer la répartition de chaque bloc sur les serveurs HDFS */
 		return repartitionBlocs;
 
 	}
@@ -174,9 +175,6 @@ public class HdfsUtil {
 		BufferedWriter fos = new BufferedWriter(new FileWriter(path + chunkNumber, true));
 		while ((line = bufferedReader.readLine()) != null) {
 			if (fileSize + line.getBytes().length > chunkSize * 1024) {
-				System.out.println(
-						"ça dépasse le chunkSize à fileSize=" + fileSize + "et line.length=" + line.getBytes().length);
-				;
 				fos.close();
 				fos = new BufferedWriter(new FileWriter(path + (++chunkNumber), true));
 				fos.write(line);
