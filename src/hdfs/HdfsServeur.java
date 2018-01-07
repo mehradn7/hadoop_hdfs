@@ -17,6 +17,7 @@ import formats.Format;
 import formats.KV;
 import formats.KvFormat;
 import formats.LineFormat;
+import ordo.HeartBeatEmitter;
 
 public class HdfsServeur implements Runnable {
 
@@ -26,6 +27,7 @@ public class HdfsServeur implements Runnable {
 	protected Socket s;
 	protected String hstname;
 	protected String prefixlog;
+	private HeartBeatEmitter heartBeatThread;
 
 	/**
 	 * Permet de créer un noeud (serveur) hdfs commande : java hdfsserveur port
@@ -42,7 +44,7 @@ public class HdfsServeur implements Runnable {
 			e1.printStackTrace();
 		}
 
-		/* Signaler la connexion au NameNode */
+		/* Signaler la première connexion au NameNode */
 
 		try {
 			Socket sn = new Socket(NameNode.hostname, NameNode.port);
@@ -53,13 +55,19 @@ public class HdfsServeur implements Runnable {
 			oos.close();
 			sn.close();
 		} catch (UnknownHostException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
 
+		/* Lancer un thread chargé d'envoyer des HeartBeats au NameNode */
+		try {
+			this.heartBeatThread = new HeartBeatEmitter(NameNode.hostname, NameNode.heartBeatPort);
+			this.heartBeatThread.start(); // .interupt() quand Ctrl C
+		} catch (IOException e2) {
+			e2.printStackTrace();
+		}
+		
 		/* Attendre les commandes du client */
 
 		ServerSocket ss = null;

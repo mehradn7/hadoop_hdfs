@@ -24,84 +24,67 @@ public class TraitantNameNode implements Runnable {
 
 	@Override
 	public void run() {
-		System.out.println(Instant.now());
-		ObjectInputStream ois = null;
-		try {
-			ois = new ObjectInputStream(socket.getInputStream());
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		ObjectOutputStream oos;
-		INode inode;
-		System.out.println("NN LA");
-		String cmd = "";
-		try {
-			cmd = (String) ois.readObject();
-		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		System.out.println("NN ICI");
 
 		try {
+			ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
+
+			ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
+			
+			INode inode;
+			String cmd = (String) ois.readObject();
+
 			switch (cmd) {
 			case "connect":
 				connect(ois);
 				break;
 			case "write":
-				oos = new ObjectOutputStream(socket.getOutputStream());
+				//oos = new ObjectOutputStream(socket.getOutputStream());
 				inode = (INode) ois.readObject();
 				addINodeToList(inode);
 				sendFileMapBlocs(oos, inode);
 				break;
 			case "read":
-				oos = new ObjectOutputStream(socket.getOutputStream());
+				//oos = new ObjectOutputStream(socket.getOutputStream());
 				inode = (INode) ois.readObject();
 				sendFileMapBlocs(oos, inode);
 				break;
 			case "delete":
-				oos = new ObjectOutputStream(socket.getOutputStream());
+				//oos = new ObjectOutputStream(socket.getOutputStream());
 				inode = (INode) ois.readObject();
 				sendFileMapBlocs(oos, inode);
 				break;
 			case "getServers":
-				oos = new ObjectOutputStream(socket.getOutputStream());
+				//oos = new ObjectOutputStream(socket.getOutputStream());
 				sendAvailableServers(oos);
 				break;
 			case "getINodes":
-				oos = new ObjectOutputStream(socket.getOutputStream());
+				//oos = new ObjectOutputStream(socket.getOutputStream());
 				sendINodes(oos);
 				break;
 			default:
 				System.out.println("Erreur : commande inconnue");
 				break;
 			}
+
+			if (!(oos == null)) {
+				oos.close();
+			}
+			ois.close();
+			socket.close();
+			
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
-		for (String host : availableServers.keySet()) {
-			System.out.println(host + "-" + availableServers.get(host));
-		}
 	}
-	
+
 	private void addINodeToList(INode inode) {
 		HashMap<Integer, ArrayList<String>> repartitionBlocs = HdfsUtil.repartirBlocs(this.availableServers,
-				inode.getRepFactor());
+				inode.getRepFactor(), inode.getNbOfChunks());
 		inode.setMapBlocs(repartitionBlocs);
 		this.listINodes.add(inode);
 
-		/*
-		 * for (INode in : listINodes) { System.out.println(in.getFilename());
-		 * for (Integer i : in.getMapBlocs().keySet()) { System.out.println(i +
-		 * "->" + in.getMapBlocs().get(i)); } }
-		 */
 
 	}
 
@@ -118,22 +101,21 @@ public class TraitantNameNode implements Runnable {
 		for (INode in : this.listINodes) {
 			if (in.getFilename().equals(inode.getFilename())) {
 				fileFound = true;
-				oos.writeObject(in.getMapBlocs());
+				HashMap<Integer, ArrayList<String>> mapBlocs = new HashMap<Integer, ArrayList<String>>();
+				mapBlocs = in.getMapBlocs();
+				oos.writeObject(mapBlocs);
 			}
 		}
 		if (!fileFound) {
-			System.out.println("Fichier non trouvé");
+			throw new RuntimeException("Fichier non trouvé");
 		}
 	}
 
 	private void connect(ObjectInputStream ois) throws ClassNotFoundException, IOException {
 		String hostname = (String) ois.readObject();
 		int port = ois.readInt();
-		ois.close();
-
 		this.availableServers.put(hostname, port);
 
 	}
-
 
 }

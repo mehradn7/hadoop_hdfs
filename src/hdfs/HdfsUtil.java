@@ -2,7 +2,7 @@ package hdfs;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.FileNotFoundException;
+import java.io.EOFException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -18,6 +18,10 @@ import java.util.Random;
 import hdfs.HdfsClient.Commande;
 
 public class HdfsUtil {
+	/*
+	 * Classe contenant des méthodes statiques utilisées par les autres classes
+	 * de l'application
+	 */
 
 	/*
 	 * Méthode statique destinée à être appelée hors HDFS Cette méthode ouvre
@@ -32,6 +36,7 @@ public class HdfsUtil {
 		ObjectInputStream ois = new ObjectInputStream(s.getInputStream());
 		@SuppressWarnings("unchecked")
 		HashMap<String, Integer> res = (HashMap<String, Integer>) ois.readObject();
+		s.close();
 		return res;
 	}
 
@@ -42,6 +47,7 @@ public class HdfsUtil {
 		ObjectInputStream ois = new ObjectInputStream(s.getInputStream());
 		@SuppressWarnings("unchecked")
 		ArrayList<INode> res = (ArrayList<INode>) ois.readObject();
+		s.close();
 		return res;
 	}
 
@@ -61,26 +67,37 @@ public class HdfsUtil {
 			oos.writeObject(inode);
 			ois = new ObjectInputStream(s.getInputStream());
 			repartitionBlocs = (HashMap<Integer, ArrayList<String>>) ois.readObject();
+			ois.close();
 			break;
 		case CMD_WRITE:
 			oos.writeObject("write");
 			oos.writeObject(inode);
 			ois = new ObjectInputStream(s.getInputStream());
 			repartitionBlocs = (HashMap<Integer, ArrayList<String>>) ois.readObject();
+			ois.close();
 			break;
 		case CMD_DELETE:
 			oos.writeObject("delete");
 			oos.writeObject(inode);
 			ois = new ObjectInputStream(s.getInputStream());
 			repartitionBlocs = (HashMap<Integer, ArrayList<String>>) ois.readObject();
+			ois.close();
+
 			break;
 		default:
 			System.out.println("Erreur : commande inconnue ");
 			break;
 		}
 
+		oos.close();
 		s.close();
 
+		for (Integer i : repartitionBlocs.keySet()) {
+			for (String server : repartitionBlocs.get(i)) {
+				System.out.println(i + "->" + server);
+
+			}
+		}
 		return repartitionBlocs;
 
 	}
@@ -102,9 +119,10 @@ public class HdfsUtil {
 		// Nombre de serveurs disponibles
 		int nbServers = availableServers.size();
 
-		// On dispose tout d'abord au moins un fragment du fichier sur chacun des
+		// On dispose tout d'abord au moins un fragment du fichier sur chacun
+		// des
 		// serveurs disponibles
-		for (int i = 0; i < nbFragment; i++) {
+		for (int i = 1; i < nbFragment + 1; i++) {
 			int j;
 			j = i % nbServers;
 			ArrayList<String> listeServeurs = new ArrayList<String>();
@@ -115,7 +133,7 @@ public class HdfsUtil {
 			Random rand = new Random();
 			int randNumber;
 			// On considère chaque fragment
-			for (int i = 0; i < nbFragment; i++) {
+			for (int i = 1; i < nbFragment + 1; i++) {
 
 				// On recrée la liste des serveurs disponibles
 				listServers = new ArrayList<String>(availableServers.keySet());
@@ -137,32 +155,11 @@ public class HdfsUtil {
 					// disponibles pour ne pas écrire plusieurs fois le même
 					// fragment sur celui-ci
 					listServers.remove(randNumber);
-
 				}
 			}
-
 		}
 
 		return repartitionBlocs;
-/*
-		HashMap<Integer, ArrayList<String>> repBlocs = new HashMap<Integer, ArrayList<String>>();
-		ArrayList<String> a1 = new ArrayList<String>();
-		a1.add("carbone");
-		a1.add("bore");
-		ArrayList<String> a2 = new ArrayList<String>();
-		a2.add("carbone");
-		a2.add("luke");
-		ArrayList<String> a3 = new ArrayList<String>();
-		a3.add("luke");
-		a3.add("bore");
-
-		repBlocs.put(1, a1);
-		repBlocs.put(2, a2);
-		repBlocs.put(3, a3);
-
-		return repBlocs;
-
-		*/
 	}
 
 	/*
@@ -200,6 +197,15 @@ public class HdfsUtil {
 
 		return chunkNumber;
 
+	}
+
+	public static void printHashMap(HashMap<Integer, ArrayList<String>> hmap) {
+		for (Integer i : hmap.keySet()) {
+			for (String server : hmap.get(i)) {
+				System.out.println(i + "->" + server);
+
+			}
+		}		
 	}
 
 }
