@@ -102,12 +102,9 @@ public class HdfsClient {
 		HdfsUtil.printHashMap(repBlocs);
 		// Ecrire les morceaux de fichier sur les serveurs HDFS
 		SlaveHdfsClientWrite slave;
-		int k = 0;
 		for (Integer i : repBlocs.keySet()) {
 			System.out.println("écriture du bloc numéro " + i);
 			for (String serveur : repBlocs.get(i)) {
-				k++;
-				System.out.println(k);
 				slave = new SlaveHdfsClientWrite(serveur, 8090, localFSSourceFname, fmt, i);
 				slaveList.add(slave);
 				slave.start();
@@ -176,7 +173,7 @@ public class HdfsClient {
 
 			switch (args[0]) {
 			case "read":
-				if (args[2] == null) {
+				if (args.length == 2) {
 					HdfsRead(args[1], args[1] + "READ");
 				} else {
 					HdfsRead(args[1], args[2]);

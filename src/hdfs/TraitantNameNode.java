@@ -26,7 +26,7 @@ public class TraitantNameNode implements Runnable {
 	public void run() {
 
 		try {
-			ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
+			ObjectOutputStream oos = null;
 
 			ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
 
@@ -38,27 +38,27 @@ public class TraitantNameNode implements Runnable {
 				connect(ois);
 				break;
 			case "write":
-				// oos = new ObjectOutputStream(socket.getOutputStream());
+				oos = new ObjectOutputStream(socket.getOutputStream());
 				inode = (INode) ois.readObject();
 				addINodeToList(inode);
 				sendFileMapBlocs(oos, inode);
 				break;
 			case "read":
-				// oos = new ObjectOutputStream(socket.getOutputStream());
+				oos = new ObjectOutputStream(socket.getOutputStream());
 				inode = (INode) ois.readObject();
 				sendFileMapBlocs(oos, inode);
 				break;
 			case "delete":
-				// oos = new ObjectOutputStream(socket.getOutputStream());
+				oos = new ObjectOutputStream(socket.getOutputStream());
 				inode = (INode) ois.readObject();
 				sendFileMapBlocs(oos, inode);
 				break;
 			case "getServers":
-				// oos = new ObjectOutputStream(socket.getOutputStream());
+				oos = new ObjectOutputStream(socket.getOutputStream());
 				sendAvailableServers(oos);
 				break;
 			case "getINodes":
-				// oos = new ObjectOutputStream(socket.getOutputStream());
+				oos = new ObjectOutputStream(socket.getOutputStream());
 				sendINodes(oos);
 				break;
 			default:
@@ -69,7 +69,6 @@ public class TraitantNameNode implements Runnable {
 			if (!(oos == null)) {
 				oos.close();
 			}
-			ois.close();
 			socket.close();
 
 		} catch (ClassNotFoundException e) {
@@ -129,6 +128,8 @@ public class TraitantNameNode implements Runnable {
 	private void connect(ObjectInputStream ois) throws ClassNotFoundException, IOException {
 		String hostname = (String) ois.readObject();
 		int port = ois.readInt();
+		ois.close();
+
 		/* Ajouter le serveur à la liste des serveurs disponibles */
 		this.availableServers.put(hostname, port);
 

@@ -1,7 +1,6 @@
 package hdfs;
 
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -11,12 +10,8 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-import javax.swing.plaf.synth.SynthSeparatorUI;
 
 import formats.Format;
-import formats.KV;
-import formats.KvFormat;
-import formats.LineFormat;
 import ordo.HeartBeatEmitter;
 
 public class HdfsServeur implements Runnable {
@@ -35,12 +30,10 @@ public class HdfsServeur implements Runnable {
 	 * @param args
 	 */
 	public void run() {
-		// port = Integer.parseInt(args[0]);
 		this.port = 8090;
 		try {
 			this.hstname = InetAddress.getLocalHost().getHostName();
 		} catch (UnknownHostException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
 
