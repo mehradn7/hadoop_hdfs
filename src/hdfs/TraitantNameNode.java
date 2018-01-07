@@ -51,6 +51,7 @@ public class TraitantNameNode implements Runnable {
 				oos = new ObjectOutputStream(socket.getOutputStream());
 				inode = (INode) ois.readObject();
 				sendFileMapBlocs(oos, inode);
+				removeINodeFromList(inode);
 				break;
 			case "getServers":
 				oos = new ObjectOutputStream(socket.getOutputStream());
@@ -75,6 +76,19 @@ public class TraitantNameNode implements Runnable {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	/* Méthode qui supprime un INoe du catalogue de fichiers du NameNode */
+	private boolean removeINodeFromList(INode inode) {
+		boolean removed = false;
+		INode inodeToRemove = null;
+		for (INode in : listINodes){
+			if (in.getFilename().equals(inode.getFilename())){
+				inodeToRemove = in;
+			}
+		}
+		removed = listINodes.remove(inodeToRemove);
+		return removed;
 	}
 
 	/* Méthode qui ajoute un INode au catalogue de fichiers du NameNode */
@@ -131,6 +145,8 @@ public class TraitantNameNode implements Runnable {
 
 		/* Ajouter le serveur à la liste des serveurs disponibles */
 		this.availableServers.put(hostname, port);
+		
+		System.out.println("Nouvelle connexion de : " + hostname);
 
 	}
 

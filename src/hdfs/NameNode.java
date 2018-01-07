@@ -51,6 +51,7 @@ public class NameNode implements Runnable {
 	private void openServerSocket(int port) {
 		try {
 			ss = new ServerSocket(port);
+			System.out.println("NameNode prêt");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

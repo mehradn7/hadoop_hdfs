@@ -2,7 +2,6 @@ package hdfs;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.EOFException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -22,6 +21,17 @@ public class HdfsUtil {
 	 * Classe contenant des méthodes statiques utilisées par les autres classes
 	 * de l'application
 	 */
+
+	/* Constantes utiles au projet */
+
+	/*
+	 * Facteur de réplication par défaut (si l'utilisateur ne le précise pas
+	 * lors de l'écriture d'un fichier
+	 */
+	public static final int defaultRepFactor = 3;
+
+	/* Taille d'un morceau de fichier en Ko */
+	public static final int chunkSize = 10000;
 
 	/*
 	 * Méthode statique destinée à être appelée hors HDFS Cette méthode ouvre
@@ -110,6 +120,16 @@ public class HdfsUtil {
 	 */
 	public static HashMap<Integer, ArrayList<String>> repartirBlocs(Map<String, Integer> availableServers,
 			int repFactor, int nbFragment) {
+
+		/*
+		 * La méthode doit être appelée avec repFactor <=
+		 * availableServers.size(), sinon il est impossible de respecter le
+		 * facteur de duplication
+		 */
+		if (repFactor > availableServers.size()) {
+			throw new RuntimeException("Erreur : repFactor = " + repFactor + "mais seulement" + availableServers.size()
+					+ " serveurs disponibles");
+		}
 
 		HashMap<Integer, ArrayList<String>> repartitionBlocs = new HashMap<Integer, ArrayList<String>>();
 
@@ -205,7 +225,7 @@ public class HdfsUtil {
 				System.out.println(i + "->" + server);
 
 			}
-		}		
+		}
 	}
 
 }

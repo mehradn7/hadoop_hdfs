@@ -1,14 +1,11 @@
 package hdfs;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 
@@ -37,7 +34,6 @@ public class HeartBeatReceiverNameNode extends Thread implements IHeartBeatRecei
 		while(true) {
 			try {
 				this.addEmitter(this.ss.accept());
-				System.out.println("1 reçu");
 			} catch (SocketTimeoutException e2) {//timeout
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -67,13 +63,9 @@ public class HeartBeatReceiverNameNode extends Thread implements IHeartBeatRecei
 	@Override
 	synchronized public void removeEmitter(Socket s) {
 		String hostname = s.getInetAddress().getHostName().replaceFirst(".enseeiht.fr", "");
-		System.out.println("SERVER REMOVED : " + hostname);
-		System.out.println(this.availableServers.remove(hostname));
+		System.out.println("Connexion perdue avec : " + hostname);
+		this.availableServers.remove(hostname);
 		this.it_sockets.remove();
-		System.out.println(this.availableServers.size());
-		for (String host : availableServers.keySet()) {
-			System.out.println(host + "-" + availableServers.get(host));
-		}
 		try {
 			s.close();
 		} catch(IOException e) {
