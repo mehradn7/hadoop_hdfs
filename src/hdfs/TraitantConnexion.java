@@ -31,66 +31,43 @@ public class TraitantConnexion implements Runnable {
 
 	@Override
 	public void run() {
-		ObjectInputStream ois = null;
 		try {
-			ois = new ObjectInputStream(socket.getInputStream());
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		System.out.println(this.prefixlog + "Le serveur accepte une nouvelle connexion.");
-		try {
+			ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
+			System.out.println(this.prefixlog + "Le serveur accepte une nouvelle connexion.");
+			this.cmd = (String) ois.readObject();
+			System.out.println(this.prefixlog + "Action demandée : " + cmd);
 
-			cmd = (String) ois.readObject();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		System.out.println(this.prefixlog + "Action demandée : " + cmd);
-		switch (cmd) {
-		case "write":
-			// ce genre de try sert à éviter de faire crash le serveur par
-			// une mauvaise manip du client
-			try {
+			switch (cmd) {
+			case "write":
 				write(ois);
-			} catch (Exception e) {
-				e.printStackTrace();
-				System.out.println(this.prefixlog + "Erreur...");
-			}
-			break;
-		case "delete":
-			try {
+				break;
+			case "delete":
 				delete(ois);
-			} catch (Exception e) {
-				e.printStackTrace();
-				System.out.println(this.prefixlog + "Erreur...");
-			}
-			break;
-		case "read":
-			try {
+
+				break;
+			case "read":
 				read(ois);
-			} catch (Exception e) {
-				e.printStackTrace();
-				System.out.println(this.prefixlog + "Erreur...");
+				break;
+			default:
+				System.out.println(this.prefixlog + "Erreur : commande inconnue");
+				break;
 			}
-			break;
-		default:
-			System.out.println(this.prefixlog + "Erreur sur la commande...");
-			break;
-		}
-		try {
 			socket.close();
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+
 	}
-	
+
 	public void write(ObjectInputStream ois) throws IOException, ClassNotFoundException {
 		KV res;
 		String fileType = (String) ois.readObject();
 		String fileName = (String) ois.readObject();
 		Format fmt = this.getFormat(fileType, fileName);
 		fmt.open(Format.OpenMode.W);
-		System.out.println(this.prefixlog + "Writing : " + fileName);
+		System.out.println(this.prefixlog + "Ecriture de : " + fileName);
 		while ((res = (KV) ois.readObject()) != null) {
 			fmt.write(res);
 		}
@@ -117,12 +94,16 @@ public class TraitantConnexion implements Runnable {
 		String fileName = (String) ois.readObject();
 		try {
 			Files.delete(Paths.get(this.prefix + "/" + fileName));
-			System.out.println(this.prefixlog + "suppression du fichier -> " + fileName);
+			System.out.println(this.prefixlog + "Suppression de : " + fileName);
 		} catch (java.nio.file.NoSuchFileException e) {
-			System.out.println(this.prefixlog + "fichier introuvable : " + fileName);
+			System.out.println(this.prefixlog + "Erreur:  fichier " + fileName + " introuvable");
 		}
 	}
 
+	/*
+	 * Méthode qui renvoie un fichier de type Format à partir du nom du fichier
+	 * et de son format écrit sous forme de String
+	 */
 	public Format getFormat(String fileType, String fileName) {
 		Format file;
 		String filePath = this.prefix + "/" + fileName;
@@ -135,7 +116,7 @@ public class TraitantConnexion implements Runnable {
 			break;
 		default:
 			file = null;
-			System.out.println(this.prefixlog + "Format non reconnu !!!");
+			System.out.println(this.prefixlog + "Erreur : format non reconnu ");
 		}
 		return file;
 	}

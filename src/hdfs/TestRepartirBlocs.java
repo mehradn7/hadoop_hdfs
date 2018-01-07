@@ -16,12 +16,7 @@ public class TestRepartirBlocs {
 				2, 5);
 		
 		/* afficher la hashmap résultat */
-		for (Integer i : repartition.keySet()) {
-			for (String server : repartition.get(i)) {
-				System.out.println(i + "->" + server);
-
-			}
-		}
+		HdfsUtil.printHashMap(repartition);
 
 	}
 
