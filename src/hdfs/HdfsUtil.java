@@ -121,7 +121,7 @@ public class HdfsUtil {
 		 * facteur de duplication
 		 */
 		if (repFactor > availableServers.size()) {
-			throw new RuntimeException("Erreur : repFactor = " + repFactor + "mais seulement" + availableServers.size()
+			throw new RuntimeException("Erreur : repFactor = " + repFactor + " mais seulement " + availableServers.size()
 					+ " serveurs disponibles");
 		}
 

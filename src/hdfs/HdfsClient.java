@@ -28,7 +28,7 @@ public class HdfsClient {
 		INode fileNode = new INode(hdfsFname);
 
 		/* Quitter si le fichier demandé n'existe pas */
-		if (!(checkCatalog(fileNode))) {
+		if (!(checkCatalog(hdfsFname))) {
 			System.out.println("Ce fichier n'existe pas.");
 			return;
 		}
@@ -47,17 +47,26 @@ public class HdfsClient {
 
 	public static void HdfsWrite(Format.Type fmt, String localFSSourceFname, int repFactor)
 			throws UnknownHostException, IOException, InterruptedException, ClassNotFoundException {
+		/*
+		 * Vérifier qu'il y a assez de serveurs disponibles pour répliquer le
+		 * fichier
+		 */
+		if (!(checkRepFactor(repFactor))) {
+			System.out.println(
+					"Il n'y a pas assez de serveurs disponibles pour répliquer le fichier " + repFactor + " fois");
+			return;
+		}
+
+		/* Vérifier si le fichier n'existe pas déjà */
+		if (checkCatalog(localFSSourceFname)) {
+			System.out.println("Il existe déjà un fichier avec ce nom. Veuillez commencer par supprimer ce fichier.");
+			return;
+		}
+
 		// Découper localement le fichier en morceaux de taille fixe
 		int nbChunks = HdfsUtil.splitFile("../data/" + localFSSourceFname, HdfsUtil.chunkSize);
 
 		INode fileNode = new INode(localFSSourceFname, repFactor, nbChunks);
-
-		boolean fileAlreadyInCatalog = checkCatalog(fileNode);
-
-		if (fileAlreadyInCatalog) {
-			System.out.println("Il existe déjà un fichier avec ce nom. Veuillez commencer par supprimer ce fichier.");
-			return;
-		}
 
 		/* Récupérer auprès du NameNode la répartition des blocs de fichier */
 		HashMap<Integer, ArrayList<String>> repBlocs = HdfsUtil.getStrategieRepartition(fileNode, Commande.CMD_WRITE);
@@ -80,9 +89,9 @@ public class HdfsClient {
 			throws UnknownHostException, IOException, ClassNotFoundException, InterruptedException {
 
 		INode fileNode = new INode(hdfsFname);
-		
+
 		/* Quitter si le fichier demandé n'existe pas */
-		if (!(checkCatalog(fileNode))) {
+		if (!(checkCatalog(hdfsFname))) {
 			System.out.println("Ce fichier n'existe pas.");
 			return;
 		}
@@ -134,7 +143,6 @@ public class HdfsClient {
 			ArrayList<SlaveHdfsClientRead> slaveList, String hdfsFname, String localFSDestFname)
 			throws UnknownHostException, IOException, ClassNotFoundException, InterruptedException {
 
-
 		/* Lire les morceaux de fichier */
 		SlaveHdfsClientRead currentSlave;
 		for (Integer i : repBlocs.keySet()) {
@@ -161,7 +169,6 @@ public class HdfsClient {
 	private static void launchSlavesDelete(HashMap<Integer, ArrayList<String>> repBlocs, String hdfsFname)
 			throws UnknownHostException, IOException {
 
-
 		SlaveHdfsClientDelete sl;
 		for (Integer i : repBlocs.keySet()) {
 			for (String serveur : repBlocs.get(i)) {
@@ -175,16 +182,26 @@ public class HdfsClient {
 	 * Méthode qui vérifie si un fichier est présent dans le catalogue de
 	 * fichiers du NameNode
 	 */
-	private static boolean checkCatalog(INode fileNode)
+	private static boolean checkCatalog(String filename)
 			throws UnknownHostException, ClassNotFoundException, IOException {
 		boolean fileFound = false;
 		ArrayList<INode> listeFichiers = HdfsUtil.getListINodes();
 		for (INode in : listeFichiers) {
-			if (in.getFilename().equals(fileNode.getFilename())) {
+			if (in.getFilename().equals(filename)) {
 				fileFound = true;
 			}
 		}
 		return fileFound;
+	}
+
+	private static boolean checkRepFactor(int repFactor)
+			throws UnknownHostException, ClassNotFoundException, IOException {
+		HashMap<String, Integer> availableServers = HdfsUtil.getAvailableServers();
+		if (repFactor > availableServers.size()) {
+			return false;
+		} else {
+			return true;
+		}
 	}
 
 	public static void main(String[] args) {
