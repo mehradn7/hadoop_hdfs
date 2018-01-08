@@ -6,7 +6,7 @@ public class TestSplitFile {
 
 	public static void main(String[] args) {
 		try {
-			HdfsUtil.splitFile("testfichier", 10);
+			HdfsUtil.splitFile(args[0], 10);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

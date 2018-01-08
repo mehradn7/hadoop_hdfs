@@ -11,7 +11,7 @@ public class INode implements Serializable{
 	private static final long serialVersionUID = 1L;
 	private String filename;
 	private int repFactor;
-	private int nbOfChunks;
+	private int nbOfChunks; // nombre de morceaux du fichier
 	private HashMap<Integer, ArrayList<String>> mapBlocs;
 
 	public INode(String filename){

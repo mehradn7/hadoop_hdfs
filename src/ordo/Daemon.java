@@ -272,6 +272,10 @@ class ReducerSlave extends Thread {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
+		this.reader.close();
+		this.writer.close();
+		
 		System.out.println("Reducer terminé.");
 
 	}
@@ -359,6 +363,7 @@ class ReceiveReduce extends Thread {
 				try {
 					this.writer.close();
 					this.ss.close();
+					this.callbackReceiver.isTerminated();
 				} catch (IOException e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
@@ -366,12 +371,6 @@ class ReceiveReduce extends Thread {
 				System.out.println("Fermeture du receiver !");
 				return;
 			} catch (IOException e) {
-				try {
-					this.callbackReceiver.isTerminated();
-				} catch (RemoteException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
 			} catch (ClassNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();

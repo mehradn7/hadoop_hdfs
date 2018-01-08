@@ -2,7 +2,6 @@ package hdfs;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.net.ConnectException;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
@@ -30,7 +29,7 @@ public class SlaveHdfsClientWrite extends Thread {
 		this.fileType = fmt;
 		this.fname = localFSSourceFname;
 		this.idBloc = idBloc;
-		String pathString = "../data/" + localFSSourceFname;
+		String pathString = "../data/" + localFSSourceFname + this.idBloc;
 		switch (fmt) {
 		case LINE:
 			this.file = (Format) new LineFormat(pathString);

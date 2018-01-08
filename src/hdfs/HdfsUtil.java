@@ -2,7 +2,6 @@ package hdfs;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -18,6 +17,21 @@ import java.util.Random;
 import hdfs.HdfsClient.Commande;
 
 public class HdfsUtil {
+	/*
+	 * Classe contenant des méthodes statiques utilisées par les autres classes
+	 * de l'application
+	 */
+
+	/* Constantes utiles au projet */
+
+	/*
+	 * Facteur de réplication par défaut (si l'utilisateur ne le précise pas
+	 * lors de l'écriture d'un fichier
+	 */
+	public static final int defaultRepFactor = 3;
+
+	/* Taille d'un morceau de fichier en Ko */
+	public static final int chunkSize = 10000;
 
 	/*
 	 * Méthode statique destinée à être appelée hors HDFS Cette méthode ouvre
@@ -32,6 +46,7 @@ public class HdfsUtil {
 		ObjectInputStream ois = new ObjectInputStream(s.getInputStream());
 		@SuppressWarnings("unchecked")
 		HashMap<String, Integer> res = (HashMap<String, Integer>) ois.readObject();
+		s.close();
 		return res;
 	}
 
@@ -42,6 +57,7 @@ public class HdfsUtil {
 		ObjectInputStream ois = new ObjectInputStream(s.getInputStream());
 		@SuppressWarnings("unchecked")
 		ArrayList<INode> res = (ArrayList<INode>) ois.readObject();
+		s.close();
 		return res;
 	}
 
@@ -61,25 +77,31 @@ public class HdfsUtil {
 			oos.writeObject(inode);
 			ois = new ObjectInputStream(s.getInputStream());
 			repartitionBlocs = (HashMap<Integer, ArrayList<String>>) ois.readObject();
+			ois.close();
 			break;
 		case CMD_WRITE:
 			oos.writeObject("write");
 			oos.writeObject(inode);
 			ois = new ObjectInputStream(s.getInputStream());
 			repartitionBlocs = (HashMap<Integer, ArrayList<String>>) ois.readObject();
+			ois.close();
 			break;
 		case CMD_DELETE:
 			oos.writeObject("delete");
 			oos.writeObject(inode);
 			ois = new ObjectInputStream(s.getInputStream());
 			repartitionBlocs = (HashMap<Integer, ArrayList<String>>) ois.readObject();
+			ois.close();
+
 			break;
 		default:
 			System.out.println("Erreur : commande inconnue ");
 			break;
 		}
 
-		/* Déterminer la répartition de chaque bloc sur les serveurs HDFS */
+		oos.close();
+		s.close();
+
 		return repartitionBlocs;
 
 	}
@@ -88,9 +110,21 @@ public class HdfsUtil {
 	 * Méthode statique qui renvoie une répartition des blocs d'un fichier en
 	 * fonction des serveurs disponibles et du facteur de réplication. Cette
 	 * méthode est une boîte noire qui peut être vue comme indépendante de HDFS
+	 * PRECONDITION : repFactor <= nbServers
 	 */
 	public static HashMap<Integer, ArrayList<String>> repartirBlocs(Map<String, Integer> availableServers,
-			int repFactor) {
+			int repFactor, int nbFragment) {
+
+		/*
+		 * La méthode doit être appelée avec repFactor <=
+		 * availableServers.size(), sinon il est impossible de respecter le
+		 * facteur de duplication
+		 */
+		if (repFactor > availableServers.size()) {
+			throw new RuntimeException("Erreur : repFactor = " + repFactor + "mais seulement" + availableServers.size()
+					+ " serveurs disponibles");
+		}
+
 		HashMap<Integer, ArrayList<String>> repartitionBlocs = new HashMap<Integer, ArrayList<String>>();
 
 		// liste contenant le nom des serveurs disponibles
@@ -99,22 +133,25 @@ public class HdfsUtil {
 		// Nombre de serveurs disponibles
 		int nbServers = availableServers.size();
 
-		// On dispose tout d'abord un fragment du fichier sur chacun des
+		// On dispose tout d'abord au moins un fragment du fichier sur chacun
+		// des
 		// serveurs disponibles
-		for (int i = 0; i < nbServers; i++) {
+		for (int i = 1; i < nbFragment + 1; i++) {
+			int j;
+			j = i % nbServers;
 			ArrayList<String> listeServeurs = new ArrayList<String>();
-			listeServeurs.add(listServers.get(i));
+			listeServeurs.add(listServers.get(j));
 			repartitionBlocs.put(i, listeServeurs);
 		}
 		if (repFactor > 1) {
 			Random rand = new Random();
 			int randNumber;
 			// On considère chaque fragment
-			for (int i = 0; i < nbServers; i++) {
+			for (int i = 1; i < nbFragment + 1; i++) {
 
 				// On recrée la liste des serveurs disponibles
 				listServers = new ArrayList<String>(availableServers.keySet());
-				listServers.remove(i);
+				listServers.remove(i % nbServers);
 
 				// Et on le duplique autant de fois que nécessaire
 				for (int j = 0; j < (repFactor - 1); j++) {
@@ -132,10 +169,8 @@ public class HdfsUtil {
 					// disponibles pour ne pas écrire plusieurs fois le même
 					// fragment sur celui-ci
 					listServers.remove(randNumber);
-
 				}
 			}
-
 		}
 
 		return repartitionBlocs;
@@ -143,13 +178,12 @@ public class HdfsUtil {
 
 	/*
 	 * Méthode qui découpe un fichier LIGNE PAR LIGNE en morceaux de taille
-	 * chunkSize (en KB) 
-	 * path : chemin d'accès du fichier 
-	 * chunkSize : la taille désirée de chaque morceau (en KB)
-	 * 
+	 * chunkSize (en KB) path : chemin d'accès du fichier chunkSize : la taille
+	 * désirée de chaque morceau (en KB)
+	 *
 	 * retour : le nombre de morceaux après le découpage
-	 * 
-	 * On obtient à chaque fois le 1er morceau de taille 20 KB (pas grave)
+	 *
+	 * TESTS : OK
 	 */
 	public static int splitFile(String path, int chunkSize) throws IOException {
 		FileReader fileReader = new FileReader(path);
@@ -161,7 +195,7 @@ public class HdfsUtil {
 		while ((line = bufferedReader.readLine()) != null) {
 			if (fileSize + line.getBytes().length > chunkSize * 1024) {
 				fos.close();
-				fos = new BufferedWriter(new FileWriter(path + (chunkNumber++), true));
+				fos = new BufferedWriter(new FileWriter(path + (++chunkNumber), true));
 				fos.write(line);
 				fos.newLine();
 				fileSize = line.getBytes().length;
@@ -174,9 +208,18 @@ public class HdfsUtil {
 		fos.flush();
 		fos.close();
 		bufferedReader.close();
-		
+
 		return chunkNumber;
 
+	}
+
+	public static void printHashMap(HashMap<Integer, ArrayList<String>> hmap) {
+		for (Integer i : hmap.keySet()) {
+			for (String server : hmap.get(i)) {
+				System.out.println(i + "->" + server);
+
+			}
+		}
 	}
 
 }
