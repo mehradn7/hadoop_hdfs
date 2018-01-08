@@ -84,8 +84,6 @@ public class HdfsUtil {
 			oos.writeObject(inode);
 			ois = new ObjectInputStream(s.getInputStream());
 			repartitionBlocs = (HashMap<Integer, ArrayList<String>>) ois.readObject();
-			System.out.println("HashMap lue : ");
-			HdfsUtil.printHashMap(repartitionBlocs);
 			ois.close();
 			break;
 		case CMD_DELETE:
