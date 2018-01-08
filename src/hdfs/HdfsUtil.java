@@ -84,6 +84,8 @@ public class HdfsUtil {
 			oos.writeObject(inode);
 			ois = new ObjectInputStream(s.getInputStream());
 			repartitionBlocs = (HashMap<Integer, ArrayList<String>>) ois.readObject();
+			System.out.println("HashMap lue : ");
+			HdfsUtil.printHashMap(repartitionBlocs);
 			ois.close();
 			break;
 		case CMD_DELETE:
@@ -102,12 +104,6 @@ public class HdfsUtil {
 		oos.close();
 		s.close();
 
-		for (Integer i : repartitionBlocs.keySet()) {
-			for (String server : repartitionBlocs.get(i)) {
-				System.out.println(i + "->" + server);
-
-			}
-		}
 		return repartitionBlocs;
 
 	}

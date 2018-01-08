@@ -129,6 +129,8 @@ public class TraitantNameNode implements Runnable {
 				fileFound = true;
 				HashMap<Integer, ArrayList<String>> mapBlocs = new HashMap<Integer, ArrayList<String>>();
 				mapBlocs = in.getMapBlocs();
+				System.out.println("HashMap écrite : ");
+				HdfsUtil.printHashMap(mapBlocs);
 				oos.writeObject(mapBlocs);
 			}
 		}
