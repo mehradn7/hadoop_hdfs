@@ -2,6 +2,7 @@ package hdfs;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.net.ConnectException;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -143,10 +144,32 @@ public class HdfsClient {
 			ArrayList<SlaveHdfsClientRead> slaveList, String hdfsFname, String localFSDestFname)
 			throws UnknownHostException, IOException, ClassNotFoundException, InterruptedException {
 
+		SlaveHdfsClientRead currentSlave = null;
+
 		/* Lire les morceaux de fichier */
-		SlaveHdfsClientRead currentSlave;
 		for (Integer i : repBlocs.keySet()) {
-			currentSlave = new SlaveHdfsClientRead(repBlocs.get(i).get(0), 8090, hdfsFname + i);
+			/*
+			 * Se connecter à 1 serveur qui contient le bloc i. Si il n'est pas
+			 * disponible, essayer avec le serveur suivant
+			 */
+			boolean chunkObtained = false;
+			int k = 0;
+			for (String s : repBlocs.get(i)) {
+				System.out.println(s);
+			}
+			while (!(chunkObtained) && (k < repBlocs.get(i).size())) {
+				try {
+					currentSlave = new SlaveHdfsClientRead(repBlocs.get(i).get(k), 8090, hdfsFname + i);
+					chunkObtained = true;
+				} catch (ConnectException e) {
+					k++;
+				}
+			}
+			if (k == repBlocs.get(i).size()) {
+				System.out.println("Aucun serveur disponible ne possède le chunk numéro " + i + " du fichier");
+				return;
+			}
+			System.out.println(i);
 			slaveList.add(currentSlave);
 			currentSlave.start();
 		}
@@ -167,13 +190,18 @@ public class HdfsClient {
 	}
 
 	private static void launchSlavesDelete(HashMap<Integer, ArrayList<String>> repBlocs, String hdfsFname)
-			throws UnknownHostException, IOException {
+			throws IOException {
 
 		SlaveHdfsClientDelete sl;
 		for (Integer i : repBlocs.keySet()) {
 			for (String serveur : repBlocs.get(i)) {
-				sl = new SlaveHdfsClientDelete(serveur, 8090, hdfsFname + i);
-				sl.start();
+				try {
+					sl = new SlaveHdfsClientDelete(serveur, 8090, hdfsFname + i);
+					sl.start();
+				} catch (ConnectException e) {
+					System.out.println("Le serveur " + serveur + " est actuellement indisponible. Les chunks"
+							+ " stockés sur ce serveur n'ont pas pu être supprimés.");
+				}
 			}
 		}
 	}
