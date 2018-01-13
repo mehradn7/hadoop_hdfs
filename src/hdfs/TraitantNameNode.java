@@ -112,6 +112,9 @@ public class TraitantNameNode implements Runnable {
 
 		/* Ajouter le INode au catalogue */
 		this.listINodes.add(inode);
+		for(INode in : this.listINodes) {
+			System.out.println(in);
+		}
 
 	}
 

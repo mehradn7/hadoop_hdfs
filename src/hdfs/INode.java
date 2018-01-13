@@ -29,7 +29,10 @@ public class INode implements Serializable{
 		this.repFactor = repFactor;
 		this.mapBlocs = mapBlocs;
 	}
-
+	
+	public String toString() {
+		return this.mapBlocs.toString();
+	}
 	public int getRepFactor() {
 		return repFactor;
 	}
