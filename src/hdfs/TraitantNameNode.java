@@ -46,7 +46,10 @@ public class TraitantNameNode implements Runnable {
 				System.out.println("Registering...");
 				inode = (INode) ois.readObject();
 				System.out.println(inode);
-				addINodeToList(inode);
+				this.listINodes.add(inode);
+				for(INode in : this.listINodes) {
+					System.out.println(in);
+				}
 				break;
 			case "read":
 				System.out.println("Reading...");
@@ -112,10 +115,6 @@ public class TraitantNameNode implements Runnable {
 
 		/* Ajouter le INode au catalogue */
 		this.listINodes.add(inode);
-		for(INode in : this.listINodes) {
-			System.out.println(in);
-		}
-
 	}
 
 	/* Ecrire sur le socket client la liste des serveurs disponibles */
