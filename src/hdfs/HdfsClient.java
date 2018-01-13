@@ -217,6 +217,7 @@ public class HdfsClient {
 		boolean fileFound = false;
 		ArrayList<INode> listeFichiers = HdfsUtil.getListINodes();
 		for (INode in : listeFichiers) {
+			System.out.println("NOM FICHIER : "+in.getFilename());
 			if (in.getFilename().equals(filename)) {
 				fileFound = true;
 			}
