@@ -45,6 +45,7 @@ public class TraitantNameNode implements Runnable {
 			case "register":
 				System.out.println("Registering...");
 				inode = (INode) ois.readObject();
+				System.out.println(inode);
 				addINodeToList(inode);
 				break;
 			case "read":
