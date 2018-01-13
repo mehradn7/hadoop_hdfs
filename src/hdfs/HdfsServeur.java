@@ -26,7 +26,8 @@ public class HdfsServeur implements Runnable {
 
 	public void run() {
 		try {
-			this.hstname = InetAddress.getLocalHost().getHostName();
+			//this.hstname = InetAddress.getLocalHost().getHostName();
+			this.hstname = InetAddress.getLocalHost().getHostAddress();
 		} catch (UnknownHostException e1) {
 			e1.printStackTrace();
 		}

@@ -118,7 +118,6 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 	@Override
 	public void setLocalHostname(String hostname) throws RemoteException {
 		this.localHostname = hostname;
-		
 	}
 	
 	public HashMap<String, String> getKeyToDaemon() throws RemoteException {

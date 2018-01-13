@@ -2,6 +2,7 @@ package ordo;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.ServerSocket;
@@ -27,6 +28,9 @@ import formats.KvFormat;
 import formats.LineFormat;
 import formats.SocketAndKvFormat;
 import formats.SocketFormat;
+import hdfs.HdfsClient;
+import hdfs.INode;
+import hdfs.NameNode;
 import map.MapReduce;
 
 public class Job extends UnicastRemoteObject implements IJob {
@@ -438,7 +442,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 				e1.printStackTrace();
 			} // modification concurrente possible
 			
-			for(int i = 0; i < this.getNumberOfReduces(); i++) { // TODO : non-parallèle
+			for(int i = 0; i < this.getNumberOfMaps(); i++) { // TODO : non-parallèle
 				current_daemon = it_daemons.next();
 				try {
 					current_daemon.runSender();
@@ -463,6 +467,11 @@ public class Job extends UnicastRemoteObject implements IJob {
 			
 			this.setBarrierForReducers(new CountDownLatch(this.getNumberOfReduces())); // création barrière pour reducers
 			
+			//HDFS - begin
+			HashMap<Integer, ArrayList<String>> mapBlocs = new HashMap<Integer, ArrayList<String>>();
+			ArrayList<String> ips;
+			//HDFS - end
+			
 			try {
 				it_daemons = launcher.getDaemons().iterator();
 			} catch (RemoteException e1) {
@@ -479,6 +488,18 @@ public class Job extends UnicastRemoteObject implements IJob {
 				// écriture : locale pour le moment
 				Format writer = new KvFormat(this.getInputFname()+"-reducerOUT"); // TODO : temporaire
 				
+				
+				//HDFS - begin
+				ips = (new ArrayList<String>());
+				try {
+					ips.add(current_daemon.getLocalHostname());
+					mapBlocs.put(i+1, ips);
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				//HDFS - end
+				
 				// callback : indique la terminaison d'un reducer
 				try {
 					ICallBack callbackReduce = new CallBackReduce(this.getBarrierForReducers());
@@ -488,7 +509,23 @@ public class Job extends UnicastRemoteObject implements IJob {
 					e.printStackTrace();
 				}
 			}
-		}
+			
+			//HDFS - begin
+			try {
+				Socket toNameNode;
+				ObjectOutputStream oosNN;
+				toNameNode = new Socket(NameNode.hostname, NameNode.port);
+				oosNN = (new ObjectOutputStream(toNameNode.getOutputStream()));
+				oosNN.writeObject("register");
+				oosNN.writeObject(new INode(this.getInputFname()+"-reducerOUT", 1, mapBlocs));
+				oosNN.close();
+				toNameNode.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			//HDFS - end
+			
+		}// end if
 		
 		try {
 			System.out.println("En attente des reducers...");
@@ -501,6 +538,16 @@ public class Job extends UnicastRemoteObject implements IJob {
 		/*
 		 * Récupération des réduces pour concaténation et écriture du résultat final.
 		 */
+		
+		//HDFS - begin
+		try {
+			HdfsClient.HdfsRead(this.getInputFname()+"-reducerOUT", this.getOutputFname());
+		} catch (ClassNotFoundException | IOException | InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		//HDFS - end
+		
 		
 	}
 	
