@@ -43,6 +43,7 @@ public class TraitantNameNode implements Runnable {
 				sendFileMapBlocs(oos, inode);
 				break;
 			case "register":
+				System.out.println("Registering...");
 				inode = (INode) ois.readObject();
 				addINodeToList(inode);
 				break;
