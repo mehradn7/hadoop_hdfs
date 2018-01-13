@@ -44,7 +44,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 	/*
 	 * Adresse IP de l'hôte.
 	 */
-	public static final String inetAddress = "147.127.133.193";
+	public static final String inetAddress = "147.127.133.174";
 	
 	/*
 	 * Port du registry RMI.
@@ -541,10 +541,10 @@ public class Job extends UnicastRemoteObject implements IJob {
 				currentSize = Job.daemons.size();
 				diff = currentSize - previousSize;
 				if (diff != 0) {
-					System.out.println("\n[] : Daemons ->");
+					System.out.println("\n[] : Daemons connectés :");
 				 	while(it_daemons.hasNext()) {
 				 		hst = it_daemons.next();
-				 		System.out.println(" - "+hst);
+				 		System.out.println("   IP = "+hst);
 				 	}
 				}
 			 	TimeUnit.SECONDS.sleep(1);
