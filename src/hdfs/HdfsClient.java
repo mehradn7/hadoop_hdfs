@@ -95,6 +95,8 @@ public class HdfsClient {
 		if (!(checkCatalog(hdfsFname))) {
 			System.out.println("Ce fichier n'existe pas.");
 			return;
+		} else {
+			System.out.println("Ce fichier existe.");
 		}
 
 		/* Récupérer auprès du NameNode la répartition des blocs de fichier */
