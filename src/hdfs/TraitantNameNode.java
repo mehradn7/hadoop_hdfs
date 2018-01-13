@@ -49,6 +49,7 @@ public class TraitantNameNode implements Runnable {
 				addINodeToList(inode);
 				break;
 			case "read":
+				System.out.println("Reading...");
 				oos = new ObjectOutputStream(socket.getOutputStream());
 				inode = (INode) ois.readObject();
 				sendFileMapBlocs(oos, inode);
