@@ -486,7 +486,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 				Format reader = new KvFormat(this.getInputFname()+"-reducerIN");
 				
 				// écriture : locale pour le moment
-				Format writer = new KvFormat(this.getInputFname()+"-reducerOUT"); // TODO : temporaire
+				Format writer = new KvFormat(this.getInputFname()+"-reducerOUT"+(i+1)); // TODO : temporaire
 				
 				
 				//HDFS - begin
