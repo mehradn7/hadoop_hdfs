@@ -30,5 +30,5 @@ public interface IDaemon extends Remote {
 	
 	public void runReceiver(Format writer, ICallBack callbackReceiver) throws RemoteException;
 	
-	public void runSender() throws RemoteException;
+	public void runSender(String fname) throws RemoteException;
 }

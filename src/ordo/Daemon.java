@@ -105,8 +105,8 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 		receiveReduce.start();
 	}
 	
-	public void runSender() throws RemoteException {
-		SendReduce sendReduce = new SendReduce(this);
+	public void runSender(String fname) throws RemoteException {
+		SendReduce sendReduce = new SendReduce(this, fname);
 		sendReduce.start();
 	}
 	
@@ -286,9 +286,11 @@ class ReducerSlave extends Thread {
 class SendReduce extends Thread {
 
 	private IDaemon daemon;
+	private String fname;
 	
-	public SendReduce(IDaemon daemon) {
+	public SendReduce(IDaemon daemon, String fname) {
 		this.daemon = daemon;
+		this.fname = fname;
 	}
 	
 	public void run() {
@@ -296,7 +298,7 @@ class SendReduce extends Thread {
 			HashMap<String, String> keyToDaemon = this.daemon.getKeyToDaemon();
 			HashMap<String, ObjectOutputStream> ipToOos = new HashMap<String, ObjectOutputStream>();
 			String ip_current_daemon;
-			Format reader = new KvFormat(this.daemon.getMapperFname());
+			Format reader = new KvFormat(this.fname);
 			reader.open(OpenMode.R);
 			KV kv;
 			

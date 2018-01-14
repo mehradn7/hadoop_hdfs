@@ -364,9 +364,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 		 */
 		Set<String> keys = keyReceiver.getKeys();
 		System.out.println("Clefs réceptionnées : "+keys);
-		if(true) {
-			return;
-		}
+
 		/*
 		 * Lancement des tâches Reduces.
 		 */
@@ -419,7 +417,12 @@ public class Job extends UnicastRemoteObject implements IJob {
 				}
 			}
 			
-			System.out.println("KeyToDaemon : " + keyToDaemon);
+			System.out.println("Shuffle...");
+			for(String key : keyToDaemon.keySet()) {
+				System.out.println(" KEY : "+key);
+				System.out.println(keyToDaemon.get(key));
+				System.out.println("");
+			}
 			
 			try {
 				it_daemons = launcher.getDaemons().iterator(); // choix des daemons pour reduces
@@ -471,10 +474,11 @@ public class Job extends UnicastRemoteObject implements IJob {
 				e1.printStackTrace();
 			} // modification concurrente possible
 			
-			for(int i = 0; i < this.getNumberOfMaps(); i++) { // TODO : non-parallèle
-				current_daemon = it_daemons.next();
+			for(int i = 1; i <= mapBlocs.size(); i++) { // TODO : non-parallèle
+				
+				current_daemon = daemons.get(mapBlocs.get(i).get(0));
 				try {
-					current_daemon.runSender();
+					current_daemon.runSender(this.getInputFname()+i+"-mapper");
 				} catch (RemoteException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
