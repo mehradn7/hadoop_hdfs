@@ -275,6 +275,12 @@ class ReducerSlave extends Thread {
 		this.reader.close();
 		this.writer.close();
 		
+		try {
+			Files.delete(Paths.get(this.reader.getFname()));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		System.out.println("Reducer terminé.");
 
 	}
@@ -320,6 +326,7 @@ class SendReduce extends Thread {
 			for(ObjectOutputStream oos : ipToOos.values()) {
 				oos.close();
 			}
+			Files.delete(Paths.get(this.fname));
 			
 		} catch (RemoteException e) {
 			e.printStackTrace();
