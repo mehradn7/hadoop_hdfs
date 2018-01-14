@@ -99,6 +99,9 @@ public class HdfsClient {
 
 		/* Récupérer auprès du NameNode la répartition des blocs de fichier */
 		HashMap<Integer, ArrayList<String>> repBlocs = HdfsUtil.getStrategieRepartition(fileNode, Commande.CMD_READ);
+		
+		System.out.println("###VADOR###");
+		HdfsUtil.printHashMap(repBlocs);
 
 		ArrayList<SlaveHdfsClientRead> slaveList = new ArrayList<SlaveHdfsClientRead>();
 
