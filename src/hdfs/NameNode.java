@@ -9,9 +9,9 @@ import java.util.List;
 import java.util.Map;
 
 public class NameNode implements Runnable {
-	public static String hostname = "bobafett";
+	public static String hostname = "147.127.133.193";
 	public static int port = 8091;
-	public static int heartBeatPort = 5002;
+	public static int heartBeatPort = 6002;
 	private ServerSocket ss;
 	private Socket s;
 	private Map<String, Integer> availableServers = new LinkedHashMap<String, Integer>();

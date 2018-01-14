@@ -48,7 +48,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 	/*
 	 * Adresse IP de l'hôte.
 	 */
-	public static final String inetAddress = "147.127.133.174";
+	public static final String inetAddress = "147.127.133.193";
 	
 	/*
 	 * Port du registry RMI.
