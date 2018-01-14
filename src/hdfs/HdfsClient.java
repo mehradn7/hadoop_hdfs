@@ -99,9 +99,6 @@ public class HdfsClient {
 
 		/* Récupérer auprès du NameNode la répartition des blocs de fichier */
 		HashMap<Integer, ArrayList<String>> repBlocs = HdfsUtil.getStrategieRepartition(fileNode, Commande.CMD_READ);
-		
-		System.out.println("###VADOR###");
-		HdfsUtil.printHashMap(repBlocs);
 
 		ArrayList<SlaveHdfsClientRead> slaveList = new ArrayList<SlaveHdfsClientRead>();
 
@@ -196,15 +193,25 @@ public class HdfsClient {
 			throws IOException {
 
 		SlaveHdfsClientDelete sl;
+		ArrayList<SlaveHdfsClientDelete> sls = new ArrayList<SlaveHdfsClientDelete>();
 		for (Integer i : repBlocs.keySet()) {
 			for (String serveur : repBlocs.get(i)) {
 				try {
 					sl = new SlaveHdfsClientDelete(serveur, 8090, hdfsFname + i);
 					sl.start();
+					sls.add(sl);
 				} catch (ConnectException e) {
 					System.out.println("Le serveur " + serveur + " est actuellement indisponible. Les chunks"
 							+ " stockés sur ce serveur n'ont pas pu être supprimés.");
 				}
+			}
+		}
+		for(SlaveHdfsClientDelete s : sls) {
+			try {
+				s.join();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 	}
