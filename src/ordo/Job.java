@@ -364,7 +364,9 @@ public class Job extends UnicastRemoteObject implements IJob {
 		 */
 		Set<String> keys = keyReceiver.getKeys();
 		System.out.println("Clefs réceptionnées : "+keys);
-				
+		if(true) {
+			return;
+		}
 		/*
 		 * Lancement des tâches Reduces.
 		 */
