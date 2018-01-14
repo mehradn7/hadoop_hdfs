@@ -106,7 +106,7 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 	}
 	
 	public void runSender(String fname) throws RemoteException {
-		SendReduce sendReduce = new SendReduce(this, fname);
+		SendReduce sendReduce = new SendReduce(this, Daemon.prefix + fname);
 		sendReduce.start();
 	}
 	
