@@ -56,13 +56,13 @@ public class HeartBeatReceiverNameNode extends Thread implements IHeartBeatRecei
 
 	@Override
 	synchronized public void addEmitter(Socket s) {
-		this.sockets.put(s.getInetAddress().getHostName().replaceFirst(".enseeiht.fr", ""), s);
+		this.sockets.put(s.getInetAddress().getHostAddress(), s);
 		
 	}
 
 	@Override
 	synchronized public void removeEmitter(Socket s) {
-		String hostname = s.getInetAddress().getHostName().replaceFirst(".enseeiht.fr", "");
+		String hostname = s.getInetAddress().getHostAddress();
 		System.out.println("Connexion perdue avec : " + hostname);
 		this.availableServers.remove(hostname);
 		this.it_sockets.remove();
