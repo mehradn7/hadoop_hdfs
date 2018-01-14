@@ -27,8 +27,8 @@ import formats.Format.Type;
 import formats.KvFormat;
 import formats.LineFormat;
 import formats.SocketAndKvFormat;
-import formats.SocketFormat;
 import hdfs.HdfsClient;
+import hdfs.HdfsUtil;
 import hdfs.INode;
 import hdfs.NameNode;
 import map.MapReduce;
@@ -254,6 +254,34 @@ public class Job extends UnicastRemoteObject implements IJob {
 		this.setMapReduce(mr);
 		
 		/*
+		 * Répartition du fichier source.
+		 */
+		//HDFS - begin
+		try {
+			HdfsClient.HdfsWrite(Type.LINE, this.getInputFname(), 1);
+		} catch (ClassNotFoundException | IOException | InterruptedException e3) {
+			e3.printStackTrace();
+		}
+		
+		ArrayList<INode> listeFichiers = null;
+		INode inode = null;
+		try {
+			listeFichiers = HdfsUtil.getListINodes();
+		} catch (ClassNotFoundException | IOException e3) {
+			// TODO Auto-generated catch block
+			e3.printStackTrace();
+		}
+		for (INode in : listeFichiers) {
+			if (in.getFilename().equals(this.getInputFname())) {
+				inode = in;
+				break;
+			}
+		}
+		HashMap<Integer, ArrayList<String>> mapBlocs = inode.getMapBlocs();
+		this.setNumberOfMaps(mapBlocs.size());
+		// HDFS - end
+		
+		/*
 		 * Lancement des tâches Map.
 		 */
 		
@@ -272,17 +300,18 @@ public class Job extends UnicastRemoteObject implements IJob {
 		} // TODO : on suppose qu'il n'y a pas de panne des daemons
 		System.out.println("Nombre de Daemons connectés : "+numberOfDaemons);
 		
-		this.setNumberOfMaps(numberOfDaemons); // TODO : fixe pour le moment
+		//this.setNumberOfMaps(numberOfDaemons); // TODO : fixe pour le moment
 		
 		
-		Collection<IDaemon> daemons = null;
+		HashMap<String, IDaemon> daemons = null;
 		try {
-			daemons = launcher.getDaemons();
+			daemons = launcher.getHashMapDaemons();
 		} catch (RemoteException e2) {
 			e2.printStackTrace();
 			return;
 		} // modification concurrente possible
-		Iterator<IDaemon> it_daemons = daemons.iterator();
+		//Iterator<IDaemon> it_daemons = daemons.iterator();
+		Iterator<IDaemon> it_daemons = null;
 		IDaemon current_daemon;
 
 		/*
@@ -294,30 +323,28 @@ public class Job extends UnicastRemoteObject implements IJob {
 		/*
 		 * Lancement des tâches map en quantité this.numberOfMaps, en parrallèle TODO
 		 */
-		if (this.getNumberOfMaps() <= numberOfDaemons) {
 			
-			this.setBarrierForMappers(new CountDownLatch(this.getNumberOfMaps())); // création barrière
+		this.setBarrierForMappers(new CountDownLatch(this.getNumberOfMaps())); // création barrière
+		
+		for(int i = 1; i <= mapBlocs.size(); i++) { // TODO : non-parallèle
+			System.out.println("Lancement du Mapper : "+(i+1));
 			
-			for(int i = 0; i < this.getNumberOfMaps(); i++) { // TODO : non-parallèle
-				System.out.println("Lancement du Mapper : "+(i+1));
+			current_daemon = daemons.get(mapBlocs.get(i).get(0));
+			
+			// lecture du fraguement hdfs local de même nom que le fichier global
+			Format reader = new LineFormat(this.getInputFname()+i);
+			
+			// écriture : envoie des clefs au Job, et maintient des résultats dans une HashMap locale
+			Format writer = new SocketAndKvFormat(this.getInputFname()+i+"-mapper");
+			
+			try {
+				// callback : indique la terminaison d'une tâche Map
+				ICallBack callbackMapper = new CallBackMap(this.getBarrierForMappers());
 				
-				current_daemon = it_daemons.next();
-				
-				// lecture du fraguement hdfs local de même nom que le fichier global
-				Format reader = new LineFormat(this.getInputFname());
-				
-				// écriture : envoie des clefs au Job, et maintient des résultats dans une HashMap locale
-				Format writer = new SocketAndKvFormat(this.getInputFname()+"-mapper");
-				
-				try {
-					// callback : indique la terminaison d'une tâche Map
-					ICallBack callbackMapper = new CallBackMap(this.getBarrierForMappers());
-					
-					// lancement du mapper sur le daemon courrant
-					current_daemon.runMap(this.getMapReduce(), reader, writer, callbackMapper);
-				} catch (RemoteException e) {
-					e.printStackTrace();
-				}
+				// lancement du mapper sur le daemon courrant
+				current_daemon.runMap(this.getMapReduce(), reader, writer, callbackMapper);
+			} catch (RemoteException e) {
+				e.printStackTrace();
 			}
 		}
 		
@@ -468,7 +495,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 			this.setBarrierForReducers(new CountDownLatch(this.getNumberOfReduces())); // création barrière pour reducers
 			
 			//HDFS - begin
-			HashMap<Integer, ArrayList<String>> mapBlocs = new HashMap<Integer, ArrayList<String>>();
+			mapBlocs = new HashMap<Integer, ArrayList<String>>();
 			ArrayList<String> ips;
 			//HDFS - end
 			
