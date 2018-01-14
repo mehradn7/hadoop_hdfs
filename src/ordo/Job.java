@@ -512,21 +512,21 @@ public class Job extends UnicastRemoteObject implements IJob {
 				e1.printStackTrace();
 			} // modification concurrente possible
 			
-			for(int i = 0; i < this.getNumberOfReduces(); i++) { // TODO : non-parallèle
+			for(int i = 1; i <= this.getNumberOfReduces(); i++) { // TODO : non-parallèle
 				current_daemon = it_daemons.next();
 				
 				// lecture de ce qu'envoient les autres daemons
 				Format reader = new KvFormat(this.getInputFname()+"-reducerIN");
 				
 				// écriture : locale pour le moment
-				Format writer = new KvFormat(this.getInputFname()+"-reducerOUT"+(i+1)); // TODO : temporaire
+				Format writer = new KvFormat(this.getInputFname()+"-reducerOUT"+i); // TODO : temporaire
 				
 				
 				//HDFS - begin
 				ips = (new ArrayList<String>());
 				try {
 					ips.add(current_daemon.getLocalHostname());
-					mapBlocs.put(i+1, ips);
+					mapBlocs.put(i, ips);
 				} catch (IOException e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
@@ -544,6 +544,8 @@ public class Job extends UnicastRemoteObject implements IJob {
 			}
 			
 			//HDFS - begin
+			HdfsUtil.printHashMap(mapBlocs);
+			
 			try {
 				Socket toNameNode;
 				ObjectOutputStream oosNN;
