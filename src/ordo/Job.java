@@ -578,6 +578,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 		try {
 			HdfsClient.HdfsRead(this.getInputFname()+"-reducerOUT", this.getOutputFname());
 			HdfsClient.HdfsDelete(this.getInputFname()+"-reducerOUT");
+			HdfsClient.HdfsDelete(this.getInputFname());
 		} catch (ClassNotFoundException | IOException | InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
