@@ -43,7 +43,7 @@ public class PiMCMapReduce implements MapReduce {
 	 *            le string qui représente le point
 	 * @return vrai si le point est dans le cercle unité
 	 */
-	private boolean isInCircle(String point) {
+	public static boolean isInCircle(String point) {
 		String[] coordonnees = point.split("@");
 		double x = Double.parseDouble(coordonnees[0]);
 		double y = Double.parseDouble(coordonnees[1]);
