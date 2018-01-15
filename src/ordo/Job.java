@@ -128,6 +128,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 	public Job() throws RemoteException {
 		super();
 		try {
+			this.numberOfReduces = 0;
 			this.hostname = InetAddress.getLocalHost().getHostAddress();
 			Job.daemons = new HashMap<String, IDaemon>();
 		} catch (UnknownHostException e) {
@@ -363,7 +364,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 		 * On récupère l'ensemble des clefs envoyées par les mappers.
 		 */
 		Set<String> keys = keyReceiver.getKeys();
-		System.out.println("Clefs réceptionnées : "+keys);
+//		System.out.println("Clefs réceptionnées : "+keys);
 
 		/*
 		 * Lancement des tâches Reduces.
@@ -376,10 +377,12 @@ public class Job extends UnicastRemoteObject implements IJob {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		} // TODO : on suppose qu'il n'y a pas de panne des daemons
-		this.setNumberOfReduces(numberOfDaemons); // TODO : temporaire
+		if (this.getNumberOfReduces() == 0) {
+			this.setNumberOfReduces(numberOfDaemons);
+		}
 		
 		int numberOfKeys = keys.size(); // nombre de clefs reçues
-		int nbOfKeysByDaemon =  (int) (numberOfKeys/numberOfDaemons) ; // nombre de clefs par Daemon pour Reduce
+		int nbOfKeysByDaemon =  (int) (numberOfKeys/this.getNumberOfReduces()) ; // nombre de clefs par Daemon pour Reduce
 		HashMap<String, String> keyToDaemon = new HashMap<String, String>();
 		
 		try {
@@ -417,16 +420,16 @@ public class Job extends UnicastRemoteObject implements IJob {
 				}
 			}
 			
-			System.out.println("Shuffle...");
-			for(String key : keyToDaemon.keySet()) {
-				System.out.println(" KEY : "+key);
-				System.out.println(keyToDaemon.get(key));
-				System.out.println("");
-			}
+//			System.out.println("Shuffle...");
+//			for(String key : keyToDaemon.keySet()) {
+//				System.out.println(" KEY : "+key);
+//				System.out.println(keyToDaemon.get(key));
+//				System.out.println("");
+//			}
 			
 			try {
 				it_daemons = launcher.getDaemons().iterator(); // choix des daemons pour reduces
-				for(int i = 0; i < this.getNumberOfReduces(); i++) {
+				for(int i = 0; i < numberOfDaemons; i++) {
 					it_daemons.next().setKeyToDaemon(keyToDaemon);
 				}
 			} catch (RemoteException e2) {
@@ -577,7 +580,7 @@ public class Job extends UnicastRemoteObject implements IJob {
 		//HDFS - begin
 		try {
 			HdfsClient.HdfsRead(this.getInputFname()+"-reducerOUT", this.getOutputFname());
-			HdfsClient.HdfsDelete(this.getInputFname()+"-reducerOUT");
+			//HdfsClient.HdfsDelete(this.getInputFname()+"-reducerOUT");
 			HdfsClient.HdfsDelete(this.getInputFname());
 		} catch (ClassNotFoundException | IOException | InterruptedException e) {
 			// TODO Auto-generated catch block

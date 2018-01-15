@@ -15,7 +15,7 @@ import ordo.HeartBeatEmitter;
 
 public class HdfsServeur implements Runnable {
 
-	protected String prefix = "hdfs";
+	protected String prefix = "nosave/hdfs";
 	protected int port = 8090;
 	protected Format file;
 	protected Socket s;

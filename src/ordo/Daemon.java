@@ -45,7 +45,7 @@ public class Daemon extends UnicastRemoteObject implements IDaemon {
 	/*
 	 * Nom du répertoire des données.
 	 */
-	private static String prefix = "hdfs";
+	private static String prefix = "nosave/hdfs";
 	
 	/*
 	 * IP de l'hôte local sous forme de String.

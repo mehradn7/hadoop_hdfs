@@ -78,10 +78,11 @@ public class PiMCMapReduce implements MapReduce {
 			e.printStackTrace();
 			System.exit(1);
 		}
-		GenerateHaltonFile.generateFile(args[0], 10000);
+		GenerateHaltonFile.generateFile("../data/"+args[0], Integer.parseInt(args[1]));
 		j.setInputFormat(Format.Type.LINE);
 		j.setInputFname(args[0]);
 		j.setOutputFname("pi-" + args[0]);
+		j.setNumberOfReduces(1);
 		long t1 = System.currentTimeMillis();
 		j.startJob(new PiMCMapReduce());
 		long t2 = System.currentTimeMillis();
